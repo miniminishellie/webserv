@@ -6,14 +6,14 @@
 /*   By: bylee <bylee@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/17 16:57:15 by bylee             #+#    #+#             */
-/*   Updated: 2022/05/17 17:16:08 by bylee            ###   ########.fr       */
+/*   Updated: 2022/05/20 21:35:10 by bylee            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #ifndef LOCATION_HPP
 # define LOCATION_HPP
 
-# include "../include/Webserv.hpp"
+# include "Webserv.hpp"
 
 class Location
 {
