@@ -6,7 +6,7 @@
 /*   By: bylee <bylee@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/17 16:57:11 by bylee             #+#    #+#             */
-/*   Updated: 2022/05/20 21:35:20 by bylee            ###   ########.fr       */
+/*   Updated: 2022/05/21 15:38:57 by bylee            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -25,21 +25,12 @@ private:
   char**      m_base_env;
 public:
   /*
-    Constructor & Destructor
+    Config Constructor & Destructor declaration
   */
   Config();
   Config(const Config& ref);
   Config& operator=(const Config& ref);
   virtual ~Config();
-
-  /*
-    Getter
-  */
-  std::string get_m_software_name() const;
-  std::string get_m_software_version() const;
-  std::string get_m_http_version() const;
-  std::string get_m_cgi_version() const;
-  char        **get_m_base_env() const;
 };
 
 #endif
