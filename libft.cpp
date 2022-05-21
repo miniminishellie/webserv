@@ -4,6 +4,11 @@ void ft_strjoin(std::string& str, const std::string& buf, size_t n) {
   str.append(buf.c_str(), n);
 }
 
+void ft_str_index_join(std::string& str, const std::string& buf, size_t i) {
+  str.append(buf.c_str());
+  str = str.substr(i);
+}
+
 std::vector<std::string> Split(std::string s, char c) {
   std::vector<std::string> result;
   size_t pos = 0;
@@ -50,7 +55,7 @@ std::string Trim(std::string s, std::string seps) {
   return RTrim(LTrim(s, seps), seps);
 }
 
-int stoi(std::string str, size_t base) {
+int ft_stoi(std::string str, size_t base) {
   int sign = 1;
   long long value = 0;
   long long int_max = INT_MAX;
@@ -73,3 +78,13 @@ int stoi(std::string str, size_t base) {
   }
   return static_cast<int>(sign * value);
 }
+
+int getNewLine(std::string& data, std::string& line) {
+  if (data.find("\n") == std::string::npos)
+    return 0;
+  int pos = data.find("\n");
+  line = data.substr(0, pos);
+  line = RTrim(line, "\r");
+  data.erase(0, pos + 1);
+    return 1;
+  }

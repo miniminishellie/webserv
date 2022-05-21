@@ -1,7 +1,7 @@
-GET /uri HTTP/1.1
-header1: header1
-header2: header2
-header3: header3
+POST /uri HTTP/1.1
+Content-length: 1234
+Accept-Language: ko
+Host: 143.248.xxx.xxx
 header4: header4
 
 sklfdslkjf
