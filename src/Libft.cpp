@@ -6,7 +6,7 @@
 /*   By: bylee <bylee@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/21 15:14:43 by bylee             #+#    #+#             */
-/*   Updated: 2022/05/21 22:12:49 by bylee            ###   ########.fr       */
+/*   Updated: 2022/05/22 21:10:11 by bylee            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -64,7 +64,7 @@ std::string getStringFromFile(const std::string& file_path, int max_size){
   return (result);
 }
 
-std::vector<std::string> splitStringByChar(std::string& str, char c){
+std::vector<std::string> splitStringByChar(std::string str, char c){
   std::vector<std::string> result;
   size_t pos = 0;
 
@@ -110,3 +110,25 @@ std::vector<std::string> groupLineWithCondition(std::vector<std::string>& lines,
   lines = remain;
   return (result);
 }
+
+std::map<std::string, std::string> stringVectorToMap(std::vector<std::string> stringVector, char sep){
+  std::map<std::string, std::string> result;
+
+  if (stringVector.size() == 0)
+    return result;
+  for (size_t i = 0; i < stringVector.size(); ++i){
+    if (stringVector[i].find(sep) == std::string::npos)
+      throw (std::invalid_argument("Not found sep in string"));
+    if (stringVector[i].find(sep) == 0)
+      throw (std::invalid_argument("Not found key in string"));
+    std::string data = trimString(stringVector[i], " \t");
+    std::string key = data.substr(0, data.find(sep));
+    std::string value;
+    if (stringVector[i].find(sep) < stringVector[i].size() - 1)
+      value = data.substr(key.size() + 1);
+    result.insert(std::pair<std::string, std::string>(trimString(key, " \t"), trimString(value, " \t")));
+  }
+  return (result);
+}
+
+bool isValidIpByte(std::string s) { return ((stoi(s) >= 0) && (stoi(s) <= 255)); }

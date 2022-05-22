@@ -6,7 +6,7 @@
 /*   By: bylee <bylee@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/20 22:17:14 by bylee             #+#    #+#             */
-/*   Updated: 2022/05/21 17:11:05 by bylee            ###   ########.fr       */
+/*   Updated: 2022/05/22 20:27:41 by bylee            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -21,6 +21,7 @@
 class ServerManager
 {
 private:
+  Config m_config;
 
 public:
   /*
@@ -39,7 +40,11 @@ public:
   ServerManager Methods declaration
   */
   bool splitConfigString(std::string& config_string, std::string& config_block,\
-  std::vector<std::string>& serveral_strings);
+    std::vector<std::string>& serveral_strings);
+  bool splitServerString(std::string server_string, std::string& server_block,\
+    std::vector<std::string>& location_blocks);
+  bool isValidConfigBlock(std::string& config_block);
+  bool isValidServerBlock(std::string& server_block);
   void exitServer(const std::string& error_message);
   void createServer(const std::string& config_file_path, char **env);
 };

@@ -6,7 +6,7 @@
 /*   By: bylee <bylee@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/17 17:15:09 by bylee             #+#    #+#             */
-/*   Updated: 2022/05/21 21:07:57 by bylee            ###   ########.fr       */
+/*   Updated: 2022/05/22 16:28:32 by bylee            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -20,6 +20,7 @@ enum IncludeMode { INCLUDE_START, INCLUDE_END, INCLUDE_BOTH, INCLUDE_NOT, };
 # include <iostream>
 # include <exception>
 # include <vector>
+# include <map>
 
 # include <fcntl.h>
 # include <unistd.h>
