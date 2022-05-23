@@ -6,7 +6,7 @@
 /*   By: jihoolee <jihoolee@student.42SEOUL.kr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/17 16:43:04 by jihoolee          #+#    #+#             */
-/*   Updated: 2022/05/23 15:04:58 by jihoolee         ###   ########.fr       */
+/*   Updated: 2022/05/23 21:17:37 by jihoolee         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -15,15 +15,29 @@
 
 # include <vector>
 # include <map>
-# include <sys/select.h>
+# include <sys/socket.h>
+# include <netinet/in.h>
+# include <arpa/inet.h>
+# include <exception>
+# include "WebservConfig.hpp"
 # include "ServerConfig.hpp"
 # include "LocationConfig.hpp"
 # include "Connection.hpp"
 
+class ServerManager;
+
 class Server {
  public:
+  Server(ServerManager* sm, WebservConfig* wc);
+
+  virtual ~Server(void);
+
+  Server& operator=(const Server& operand);
+
+  void initServerSocket(void);
  private:
   ServerManager*              m_server_manager_;
+  WebservConfig*              m_webserv_config_;
   ServerConfig                m_config_;
   int                         m_socket_fd_;
   std::vector<LocationConfig> m_locations_;

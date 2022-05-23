@@ -6,7 +6,7 @@
 /*   By: jihoolee <jihoolee@student.42SEOUL.kr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/17 16:07:18 by jihoolee          #+#    #+#             */
-/*   Updated: 2022/05/23 14:40:38 by jihoolee         ###   ########.fr       */
+/*   Updated: 2022/05/23 17:36:17 by jihoolee         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -31,13 +31,15 @@ class ServerManager {
 
   ServerManager& operator=(const ServerManager& operand);
 
-  void createServer(const std::string& conf_file_path, char* env[]);
-  void runServer(void);
-  void exitServer(const std::string& what);
+  void createWebserv(const std::string& conf_file_path, char* env[]);
+  void runWebserv(void);
+  void exitWebserv(const std::string& what);
 
  private:
+  bool                m_is_running_;
   WebservConfig       m_config_;
   std::vector<Server> m_servers_;
+
 };  //  class ServerManager
 
 #endif  //  SERVER_MANAGER_HPP_

@@ -6,7 +6,7 @@
 /*   By: jihoolee <jihoolee@student.42SEOUL.kr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/23 14:40:53 by jihoolee          #+#    #+#             */
-/*   Updated: 2022/05/23 14:56:54 by jihoolee         ###   ########.fr       */
+/*   Updated: 2022/05/23 21:03:17 by jihoolee         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -18,12 +18,15 @@
 class ServerConfig {
  public:
   ServerConfig();
-  ServerConfig(const ServerConfig& copy);
+  ServerConfig(const ServerConfig& sc);
 
   virtual ~ServerConfig(void);
 
   ServerConfig& operator=(const ServerConfig& operand);
 
+  std::string get_m_server_name(void);
+  std::string get_m_host(void);
+  int         get_m_port(void);
  private:
   std::string m_server_name_;
   std::string m_host_;
