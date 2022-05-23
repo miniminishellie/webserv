@@ -1,15 +1,28 @@
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   Request.hpp                                        :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: plee <plee@student.42.fr>                  +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2022/05/23 16:26:37 by plee              #+#    #+#             */
+/*   Updated: 2022/05/23 16:26:37 by plee             ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
+
 #ifndef REQUEST_HPP
 #define REQUEST_HPP
 
 #include "libft.hpp"
+#include "Connection.hpp"
 #include <map>
 
-# define BUFF_SIZE 65536
-# define REQUEST_URI_LIMIT_SIZE 1024
-# define REQUEST_URI_LIMIT_SIZE_MIN 64
-# define REQUEST_URI_LIMIT_SIZE_MAX 8192
-# define REQUEST_HEADER_LIMIT_SIZE 8192
-# define LIMIT_CLIENT_BODY_SIZE 200000000
+// # define BUFF_SIZE 65536
+// # define REQUEST_URI_LIMIT_SIZE 1024
+// # define REQUEST_URI_LIMIT_SIZE_MIN 64
+// # define REQUEST_URI_LIMIT_SIZE_MAX 8192
+// # define REQUEST_HEADER_LIMIT_SIZE 8192
+// # define LIMIT_CLIENT_BODY_SIZE 200000000
 
 class Request
 {
@@ -41,7 +54,6 @@ class Request
   void AddHeader(std::string header);
   bool IsValidHeader(std::string header);
   bool IsRequestHasBody();
-  void ReceiveRequest(std::string& without_body);
   int ReceiveBody(int fd, char *buf, int buf_size, std::string& body);
   bool ParseBody(std::string body);
   bool ReadGeneralBody(std::string &body);
@@ -51,10 +63,26 @@ class Request
 
   //getter
   //std::string get_without_body() const;
-  Phase get_m_phase_() const;
+  Phase get_m_phase() const;
+  Method get_m_method() const;
+  URIType get_m_uri_type() const;
+  TransferType get_m_transfer_type() const;
+  std::string get_m_uri() const;
+  std::string get_m_protocol() const;
+  std::map<std::string, std::string>& get_m_headers();
+  std::string get_m_content() const;
+  int get_m_content_length() const;
 
   //setter
-  void set_m_phase_(Phase phase);
+  void set_m_phase(Phase phase);
+  void set_m_method(Method method);
+  void set_m_uri_type(URIType uritype);
+  void set_m_transfer_type(TransferType transfertype);
+  void set_m_uri(std::string uri);
+  void set_m_protocol(std::string protocol);
+  void set_m_headers(std::map<std::string, std::string> headers);
+  void set_m_content(std::string content);
+  void set_m_content_length(int content_length);
 
  private:
   Phase m_phase_;
@@ -62,13 +90,12 @@ class Request
   URIType m_uri_type_;
   TransferType m_transfer_type_;
   std::string m_uri_;
-  std::string m_protocol;
+  std::string m_protocol_;
   std::map<std::string, std::string> m_headers_;
   int m_special_header_count_;
   std::string m_content_;
   int m_content_length_;
 };
-
 
 template <typename T, typename V>
   bool hasKey(T container, V value) { return (container.find(value) != container.end()); }
