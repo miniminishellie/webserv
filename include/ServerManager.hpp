@@ -6,7 +6,7 @@
 /*   By: jihoolee <jihoolee@student.42SEOUL.kr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/17 16:07:18 by jihoolee          #+#    #+#             */
-/*   Updated: 2022/05/17 23:06:18 by jihoolee         ###   ########.fr       */
+/*   Updated: 2022/05/23 14:40:38 by jihoolee         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -17,7 +17,7 @@
 # include <vector>
 # include <string>
 # include <exception>
-# include "Config.hpp"
+# include "WebservConfig.hpp"
 # include "Server.hpp"
 
 # define DEFAULT_CONFIG_PATH  "config/default.conf"
@@ -36,7 +36,7 @@ class ServerManager {
   void exitServer(const std::string& what);
 
  private:
-  Config              m_config_;
+  WebservConfig       m_config_;
   std::vector<Server> m_servers_;
 };  //  class ServerManager
 

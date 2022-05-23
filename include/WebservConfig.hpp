@@ -1,20 +1,23 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   Config.hpp                                         :+:      :+:    :+:   */
+/*   WebservConfig.hpp                                  :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: jihoolee <jihoolee@student.42SEOUL.kr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/17 18:36:01 by jihoolee          #+#    #+#             */
-/*   Updated: 2022/05/17 18:39:56 by jihoolee         ###   ########.fr       */
+/*   Updated: 2022/05/23 14:25:30 by jihoolee         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#ifndef CONFIG_HPP_
-# define CONFIG_HPP_
+#ifndef WEBSERV_CONFIG_HPP_
+# define WEBSERV_CONFIG_HPP_
 
-class Config {
+# include <string>
+
+class WebservConfig {
  public:
  private:
-};
-#endif  //  CONFIG_HPP_
+};  //  class WebservConfig
+
+#endif  //  WEBSERV_CONFIG_HPP_

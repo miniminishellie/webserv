@@ -1,21 +1,21 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   Response.hpp                                       :+:      :+:    :+:   */
+/*   LocationConfig.hpp                                 :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: jihoolee <jihoolee@student.42SEOUL.kr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2022/05/21 15:40:04 by jihoolee          #+#    #+#             */
-/*   Updated: 2022/05/21 15:40:40 by jihoolee         ###   ########.fr       */
+/*   Created: 2022/05/21 15:38:35 by jihoolee          #+#    #+#             */
+/*   Updated: 2022/05/23 14:51:56 by jihoolee         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#ifndef RESPONSE_HPP_
-# define RESPONSE_HPP_
+#ifndef LOCATION_CONFIG_HPP_
+# define LOCATION_CONFIG_HPP_
 
-class Response {
+class LocationConfig {
  public:
  private:
-};
+};  //  class LocationConfig
 
-#endif  //  RESPONSE_HPP_
+#endif  //  LOCATION_CONFIG_HPP_
