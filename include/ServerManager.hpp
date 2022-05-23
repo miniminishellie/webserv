@@ -6,7 +6,7 @@
 /*   By: bylee <bylee@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/20 22:17:14 by bylee             #+#    #+#             */
-/*   Updated: 2022/05/23 17:08:13 by bylee            ###   ########.fr       */
+/*   Updated: 2022/05/23 19:50:33 by bylee            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -26,7 +26,7 @@ private:
 
 public:
   /*
-  ServerManager Constructor & Destructor declaration
+  ServerManager constructor & destructor declaration
   */
   ServerManager();
   ServerManager(const ServerManager& ref);
@@ -34,11 +34,11 @@ public:
   virtual ~ServerManager();
 
   /*
-  ServerMananger Getter declaration
+  ServerMananger getter declaration
   */
 
   /*
-  ServerManager Methods declaration
+  ServerManager methods declaration
   */
   bool splitConfigString(std::string& config_string, std::string& config_block,\
     std::vector<std::string>& serveral_strings);

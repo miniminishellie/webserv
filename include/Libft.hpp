@@ -6,7 +6,7 @@
 /*   By: bylee <bylee@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/21 15:11:56 by bylee             #+#    #+#             */
-/*   Updated: 2022/05/23 17:24:16 by bylee            ###   ########.fr       */
+/*   Updated: 2022/05/23 20:27:25 by bylee            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -18,6 +18,7 @@
 namespace ft
 {
   int stoi(std::string str, size_t base = 10);
+  void bzero(void *data, size_t len);
 
   std::string                         ltrimString(const std::string& str, const std::string& seps = " ");
   std::string                         rtrimString(const std::string& str, const std::string& seps = " ");
@@ -40,6 +41,19 @@ namespace ft
       --it;
     }
     return (result);
+  }
+
+  template <typename T>
+  std::string containerToString(T container, std::string sep = " "){
+  std::string result;
+
+  for (typename T::iterator it = container.begin(); it != container.end(); it++){
+    result.append(*it);
+    if (++it != container.end())
+      result.append(sep);
+    --it;
+  }
+  return (result);
   }
 }
 

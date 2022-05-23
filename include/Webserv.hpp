@@ -6,7 +6,7 @@
 /*   By: bylee <bylee@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/17 17:15:09 by bylee             #+#    #+#             */
-/*   Updated: 2022/05/23 17:21:17 by bylee            ###   ########.fr       */
+/*   Updated: 2022/05/23 20:22:24 by bylee            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -34,5 +34,9 @@
 # include <fcntl.h>
 # include <unistd.h>
 # include <sys/stat.h>
+# include <sys/socket.h>
+# include <sys/types.h>
+# include <netinet/in.h>
+# include <arpa/inet.h>
 
 #endif

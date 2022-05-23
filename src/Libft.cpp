@@ -6,7 +6,7 @@
 /*   By: bylee <bylee@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/21 15:14:43 by bylee             #+#    #+#             */
-/*   Updated: 2022/05/23 17:25:30 by bylee            ###   ########.fr       */
+/*   Updated: 2022/05/23 20:28:01 by bylee            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -37,6 +37,14 @@ namespace ft
       str.erase(str.begin());
     }
     return (static_cast<int>(sign * value));
+  }
+
+  void bzero(void *data, size_t len){
+    unsigned char *str;
+
+    str = (unsigned char *)data;
+    while (len > 0)
+      str[--len] = 0;
   }
 
   std::string ltrimString(const std::string& str, const std::string& seps)
