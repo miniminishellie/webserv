@@ -6,7 +6,7 @@
 /*   By: bylee <bylee@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/17 16:59:39 by bylee             #+#    #+#             */
-/*   Updated: 2022/05/22 20:02:36 by bylee            ###   ########.fr       */
+/*   Updated: 2022/05/23 16:21:55 by bylee            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -17,11 +17,11 @@
   Config Constructor & Destructor implementation
 */
 Config::Config()
-  : m_software_name(),
+: m_software_name(),
   m_software_version(),
   m_http_version(),
   m_cgi_version(),
-  m_base_env(NULL){}
+  m_base_env(NULL) {}
 
 Config::Config(const Config& ref)
   : m_software_name(ref.get_m_software_name()),
@@ -31,13 +31,8 @@ Config::Config(const Config& ref)
   m_base_env(ref.get_m_base_env()) {}
 
 Config::Config(std::string config_block, char **env){
-  std::vector<std::string> str = splitStringByChar(config_block, '\n');
-  // for (std::vector<std::string>::iterator it = str.begin(); it != str.end(); it++)
-  //   std::cout << *it << std::endl;
-  std::map<std::string, std::string> map_block = stringVectorToMap(splitStringByChar(config_block, '\n'), ' ');
+  std::map<std::string, std::string> map_block = ft::stringVectorToMap(ft::splitStringByChar(config_block, '\n'), ' ');
 
-  // for (std::map<std::string, std::string>::iterator it = map_block.begin(); it != map_block.end(); it++)
-  //   std::cout << "[" << (*it).first << ", " << (*it).second << "]" << std::endl;
   this->m_software_name = map_block.find("SOFTWARE_NAME")->second;
   this->m_software_version = map_block.find("SOFTWARE_VERSION")->second;
   this->m_http_version = map_block.find("HTTP_VERSION")->second;
@@ -71,7 +66,7 @@ std::string Config::get_m_software_name() const { return (this->m_software_name)
 std::string Config::get_m_software_version() const { return (this->m_software_version); }
 std::string Config::get_m_http_version() const { return (this->m_http_version); }
 std::string Config::get_m_cgi_version() const { return (this->m_cgi_version); }
-char **Config::get_m_base_env() const { return (this->m_base_env); }
+char      **Config::get_m_base_env() const { return (this->m_base_env); }
 
 std::ostream& operator<<(std::ostream& out, const Config& config){
   out << "SOFTWARE_NAME: " << config.get_m_software_name() << std::endl;

@@ -6,7 +6,7 @@
 /*   By: bylee <bylee@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/20 22:17:14 by bylee             #+#    #+#             */
-/*   Updated: 2022/05/22 20:27:41 by bylee            ###   ########.fr       */
+/*   Updated: 2022/05/23 17:08:13 by bylee            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -21,6 +21,7 @@
 class ServerManager
 {
 private:
+  std::vector<Server> m_servers;
   Config m_config;
 
 public:
@@ -45,6 +46,7 @@ public:
     std::vector<std::string>& location_blocks);
   bool isValidConfigBlock(std::string& config_block);
   bool isValidServerBlock(std::string& server_block);
+  bool isValidLocationBlock(std::string& location_block);
   void exitServer(const std::string& error_message);
   void createServer(const std::string& config_file_path, char **env);
 };
