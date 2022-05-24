@@ -6,7 +6,7 @@
 /*   By: bylee <bylee@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/17 16:57:18 by bylee             #+#    #+#             */
-/*   Updated: 2022/05/23 20:26:21 by bylee            ###   ########.fr       */
+/*   Updated: 2022/05/24 14:30:06 by bylee            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -16,6 +16,8 @@
 # include "Webserv.hpp"
 # include "Config.hpp"
 # include "ServerManager.hpp"
+
+class ServerManager;
 
 class Server
 {

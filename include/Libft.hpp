@@ -6,7 +6,7 @@
 /*   By: bylee <bylee@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/21 15:11:56 by bylee             #+#    #+#             */
-/*   Updated: 2022/05/23 20:27:25 by bylee            ###   ########.fr       */
+/*   Updated: 2022/05/24 14:26:46 by bylee            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -41,19 +41,6 @@ namespace ft
       --it;
     }
     return (result);
-  }
-
-  template <typename T>
-  std::string containerToString(T container, std::string sep = " "){
-  std::string result;
-
-  for (typename T::iterator it = container.begin(); it != container.end(); it++){
-    result.append(*it);
-    if (++it != container.end())
-      result.append(sep);
-    --it;
-  }
-  return (result);
   }
 }
 

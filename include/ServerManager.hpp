@@ -6,7 +6,7 @@
 /*   By: bylee <bylee@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/20 22:17:14 by bylee             #+#    #+#             */
-/*   Updated: 2022/05/23 19:50:33 by bylee            ###   ########.fr       */
+/*   Updated: 2022/05/24 14:30:35 by bylee            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -17,6 +17,8 @@
 # include "Location.hpp"
 # include "Server.hpp"
 # include "Libft.hpp"
+
+class Server;
 
 class ServerManager
 {

@@ -6,7 +6,7 @@
 /*   By: bylee <bylee@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/17 16:59:50 by bylee             #+#    #+#             */
-/*   Updated: 2022/05/23 20:07:49 by bylee            ###   ########.fr       */
+/*   Updated: 2022/05/24 14:31:51 by bylee            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -103,9 +103,9 @@ std::ostream& operator<<(std::ostream& out, const Location& location){
   out << "URI: " << location.get_m_uri() << std::endl;
   out << "ROOT_PATH: " << location.get_m_root_path() << std::endl;
   out << "AUTH_BASIC_REALM: " << location.get_m_auth_basic_realm() << std::endl;
-  out << "ALLOW_METHOD: " << ft::containerToString(location.get_m_allow_method()) << std::endl;
-  out << "INDEX: " << ft::containerToString(location.get_m_index()) << std::endl;
-  out << "CGI: " << ft::containerToString(location.get_m_cgi()) << std::endl;
+  out << "ALLOW_METHOD: " << ft::containerToString(location.get_m_allow_method(), "\n") << std::endl;
+  out << "INDEX: " << ft::containerToString(location.get_m_index(), "\n") << std::endl;
+  out << "CGI: " << ft::containerToString(location.get_m_cgi(), "\n") << std::endl;
   out << "AUTOINDEX: " << std::boolalpha << location.get_m_autoindex()<< std::endl;
   return (out);
 }

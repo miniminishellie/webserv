@@ -6,7 +6,7 @@
 /*   By: bylee <bylee@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/17 16:57:15 by bylee             #+#    #+#             */
-/*   Updated: 2022/05/23 19:52:09 by bylee            ###   ########.fr       */
+/*   Updated: 2022/05/24 14:29:03 by bylee            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,6 +14,7 @@
 # define LOCATION_HPP
 
 # include "Webserv.hpp"
+# include "Libft.hpp"
 
 class Location
 {

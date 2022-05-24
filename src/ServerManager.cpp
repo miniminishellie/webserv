@@ -6,7 +6,7 @@
 /*   By: bylee <bylee@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/20 22:18:23 by bylee             #+#    #+#             */
-/*   Updated: 2022/05/23 20:54:01 by bylee            ###   ########.fr       */
+/*   Updated: 2022/05/24 17:03:24 by bylee            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -117,7 +117,8 @@ bool ServerManager::isValidConfigBlock(std::string& config_block){
 
 bool ServerManager::isValidServerBlock(std::string& server_block){
   std::map<std::string, std::string>map_block = ft::stringVectorToMap(ft::splitStringByChar(server_block, '\n'), ' ');
-  std::string key[6] = {"host", "port","REQUEST_URI_LIMIT_SIZE", "REQUEST_HEADER_LIMIT_SIZE", "DEFAULT_ERROR_PAGE", "LIMIT_CLIENT_BODY_SIZE"};
+  std::string key[6] = {"host", "port","REQUEST_URI_LIMIT_SIZE",\
+    "REQUEST_HEADER_LIMIT_SIZE", "DEFAULT_ERROR_PAGE", "LIMIT_CLIENT_BODY_SIZE"};
 
   if (map_block.size() < 6 || map_block.size() > 7)
     return (false);
@@ -131,13 +132,12 @@ bool ServerManager::isValidServerBlock(std::string& server_block){
   std::vector<std::string> ip_tokens = ft::splitStringByChar(map_block.find(key[0])->second, '.');
   if (ip_tokens.size() != 4 || !std::all_of(ip_tokens.begin(), ip_tokens.end(), isValidIpByte))
     return (false);
-  
+
   int port = std::atoi(map_block.find(key[1])->second.c_str());
-  if (port != 80 && port != 443 && (port < 1024 || port > 49151))
+  if (port != PORT_HTTP && port != PORT_HTTPS && (port < PORT_REGISTERED_MIN || PORT_REGISTERED_MAX > 49151))
     return (false);
 
-  // std::vector<Server>::iterator it = m_servers.begin();
-  // for (; it != m_servers.end(); ++it) {
+  // for (std::vector<Server>::iterator it = m_servers.begin(); it != m_servers.end(); ++it) {
   //   if (it->get_m_port() == port)
   //     return (false);
   // }
@@ -150,10 +150,10 @@ bool ServerManager::isValidServerBlock(std::string& server_block){
   if (header_limit < REQUEST_HEADER_LIMIT_SIZE_MIN || header_limit > REQUEST_HEADER_LIMIT_SIZE_MAX)
     return (false);
 
-  // int fd;
-  // if ((fd = open(map_block.find(key[4])->second.c_str(), O_RDONLY)) == -1)
-  //   return (false);
-  // close(fd);
+  int fd;
+  if ((fd = open(map_block.find(key[4])->second.c_str(), O_RDONLY)) == -1)
+    return (false);
+  close(fd);
 
   int body_limit = std::atoi(map_block.find(key[5])->second.c_str());
   if (body_limit < 0 || body_limit > LIMIT_CLIENT_BODY_SIZE_MAX)
@@ -162,8 +162,9 @@ bool ServerManager::isValidServerBlock(std::string& server_block){
 }
 
 bool ServerManager::isValidLocationBlock(std::string& location_block){
-  std::map<std::string, std::string>map_block = \
+  std::map<std::string, std::string> map_block = \
     ft::stringVectorToMap(ft::splitStringByChar(location_block, '\n'), ' ');
+
   std::string key[] = {"location", "root", "allow_method", "auth_basic_realm",\
     "auth_basic_file", "index", "cgi", "autoindex", "limit_client_body_size"};
   std::set<std::string> key_set(key, key + sizeof(key) / sizeof(key[0]));
@@ -207,21 +208,21 @@ bool ServerManager::isValidLocationBlock(std::string& location_block){
         return (false);
     }
   }
-	if (ft::hasKey(map_block, key[6])) {
-		std::set<std::string> cgi_set = ft::stringVectorToSet(ft::splitStringByChar(map_block[key[6]], ' '));
-		if (cgi_set.empty() || !std::all_of(cgi_set.begin(), cgi_set.end(), isValidCgi))
-			return (false);
-	}
-	if (ft::hasKey(map_block, key[7])) {
-		std::string autoindex = map_block[key[7]];
-		if (autoindex != "on" && autoindex != "off")
-			return (false);
-	}
-	if (ft::hasKey(map_block, key[8])) {
-		std::string size = map_block[key[8]];
-		if (size.empty() || !std::all_of(size.begin(), size.end(), isDigit))
-			return (false);
-	}
+  if (ft::hasKey(map_block, key[6])) {
+    std::set<std::string> cgi_set = ft::stringVectorToSet(ft::splitStringByChar(map_block[key[6]], ' '));
+    if (cgi_set.empty() || !std::all_of(cgi_set.begin(), cgi_set.end(), isValidCgi))
+      return (false);
+  }
+  if (ft::hasKey(map_block, key[7])) {
+    std::string autoindex = map_block[key[7]];
+    if (autoindex != "on" && autoindex != "off")
+      return (false);
+  }
+  if (ft::hasKey(map_block, key[8])) {
+    std::string size = map_block[key[8]];
+    if (size.empty() || !std::all_of(size.begin(), size.end(), isDigit))
+      return (false);
+  }
   return (true);
 }
 
@@ -231,26 +232,26 @@ void ServerManager::exitServer(const std::string& error_message){
 }
 
 void  ServerManager::createServer(const std::string& config_file_path, char **env){
-  std::string config_string = ft::getStringFromFile(config_file_path);
+  std::string config_string = ft::getStringFromFile(config_file_path); //config_string에 .conf 파일 통째로 string에 담김
   std::string config_block;
   std::vector<std::string> server_strings;
 
-  if (!splitConfigString(config_string, config_block, server_strings))
+  if (!splitConfigString(config_string, config_block, server_strings)) // config_block에 nginx directives가 string에 통쨰로, server_strings에 nginx directives 제외한 나머지들이 string container에 server block별로 담김
     throw (std::invalid_argument("Failed to split config strings"));
-  if (!isValidConfigBlock(config_block))
+  if (!isValidConfigBlock(config_block)) // config_block 유효성 검사
     throw(std::invalid_argument("Config block is not valid"));
-  m_config = Config(config_block, env);
+  m_config = Config(config_block, env); // 유효성 검사 마친 config_block m_config에 생성자 호출해 정보 저장
   for (size_t i = 0; i < server_strings.size(); ++i){
     std::string server_block;
     std::vector<std::string> location_blocks;
-    if (!splitServerString(server_strings[i], server_block, location_blocks))
+    if (!splitServerString(server_strings[i], server_block, location_blocks)) // server_block에 location block 들을 제외한 server directives가 string에 통째로, location_blocks에 locations block들이 한 블록씩 통째로 string으로 담김(특이하게 마지막 '}' 이 놈을 안담음)
       throw(std::invalid_argument("Failed to split Server string"));
-    if (!isValidServerBlock(server_block))
+    if (!isValidServerBlock(server_block)) // server_block 유효성 검사
       throw(std::invalid_argument("Server block is not valid"));
     for (size_t j = 0; j < location_blocks.size(); ++j){
-      if (!isValidLocationBlock(location_blocks[j]))
+      if (!isValidLocationBlock(location_blocks[j])) // location_blocks 유효성 검사
         throw (std::invalid_argument("Location block is not valid"));
     }
-    m_servers.push_back(Server(this, server_block, location_blocks, &this->m_config));
+    //m_servers.push_back(Server(this, server_block, location_blocks, &this->m_config));
   }
 }
