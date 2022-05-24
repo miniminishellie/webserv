@@ -6,7 +6,7 @@
 /*   By: jihoolee <jihoolee@student.42SEOUL.kr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/17 16:07:18 by jihoolee          #+#    #+#             */
-/*   Updated: 2022/05/23 17:36:17 by jihoolee         ###   ########.fr       */
+/*   Updated: 2022/05/24 17:22:27 by jihoolee         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -17,6 +17,9 @@
 # include <vector>
 # include <string>
 # include <exception>
+# include <sys/time.h>
+# include <sys/event.h>
+# include <sys/types.h>
 # include "WebservConfig.hpp"
 # include "Server.hpp"
 
@@ -31,15 +34,27 @@ class ServerManager {
 
   ServerManager& operator=(const ServerManager& operand);
 
-  void createWebserv(const std::string& conf_file_path, char* env[]);
-  void runWebserv(void);
+  void createServers(const std::string& conf_file_path, char* env[]);
+  void runServers(void);
   void exitWebserv(const std::string& what);
 
  private:
-  bool                m_is_running_;
-  WebservConfig       m_config_;
-  std::vector<Server> m_servers_;
+  void  changeSignal_(int sig);
+  void  changeEvents_(std::vector<struct kevent>& change_list,
+                      uintptr_t ident,
+                      int16_t filter,
+                      uint16_t flags,
+                      uint32_t fflags,
+                      intptr_t data,
+                      void* udata);
 
+  bool                        m_is_running_;
+  WebservConfig               m_config_;
+  std::map<int, Server>       m_servers_;
+
+  int                         m_kqueue_;
+  struct kevent*              m_returned_events_;
+  std::vector<struct kevent>  m_change_list_;
 };  //  class ServerManager
 
 #endif  //  SERVER_MANAGER_HPP_

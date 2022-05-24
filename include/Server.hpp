@@ -6,7 +6,7 @@
 /*   By: jihoolee <jihoolee@student.42SEOUL.kr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/17 16:43:04 by jihoolee          #+#    #+#             */
-/*   Updated: 2022/05/23 21:17:37 by jihoolee         ###   ########.fr       */
+/*   Updated: 2022/05/24 16:59:46 by jihoolee         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -19,6 +19,8 @@
 # include <netinet/in.h>
 # include <arpa/inet.h>
 # include <exception>
+# include <unistd.h>
+# include <fcntl.h>
 # include "WebservConfig.hpp"
 # include "ServerConfig.hpp"
 # include "LocationConfig.hpp"
@@ -35,6 +37,8 @@ class Server {
   Server& operator=(const Server& operand);
 
   void initServerSocket(void);
+
+  int get_m_socket_fd(void) { return m_socket_fd_; }
  private:
   ServerManager*              m_server_manager_;
   WebservConfig*              m_webserv_config_;
