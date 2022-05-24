@@ -3,41 +3,54 @@
 /*                                                        :::      ::::::::   */
 /*   ServerManager.hpp                                  :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: jihoolee <jihoolee@student.42SEOUL.kr>     +#+  +:+       +#+        */
+/*   By: bylee <bylee@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2022/05/17 16:07:18 by jihoolee          #+#    #+#             */
-/*   Updated: 2022/05/23 14:40:38 by jihoolee         ###   ########.fr       */
+/*   Created: 2022/05/20 22:17:14 by bylee             #+#    #+#             */
+/*   Updated: 2022/05/24 22:17:12 by bylee            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#ifndef SERVER_MANAGER_HPP_
-# define SERVER_MANAGER_HPP_
+#ifndef SERVERMANAGER_HPP
+# define SERVERMANAGER_HPP
 
-# include <iostream>
-# include <vector>
-# include <string>
-# include <exception>
-# include "WebservConfig.hpp"
+# include "Config.hpp"
+# include "Location.hpp"
 # include "Server.hpp"
+# include "Libft.hpp"
 
-# define DEFAULT_CONFIG_PATH  "config/default.conf"
+class Server;
 
-class ServerManager {
- public:
-  ServerManager(void);
-  ServerManager(const ServerManager& sm);
+class ServerManager
+{
+private:
+  std::vector<Server> m_servers;
+  Config m_config;
 
-  virtual ~ServerManager(void);
+public:
+  /*
+  ServerManager constructor & destructor declaration
+  */
+  ServerManager();
+  ServerManager(const ServerManager& ref);
+  ServerManager& operator=(const ServerManager& ref);
+  virtual ~ServerManager();
 
-  ServerManager& operator=(const ServerManager& operand);
+  /*
+  ServerMananger getter declaration
+  */
 
-  void createServer(const std::string& conf_file_path, char* env[]);
-  void runServer(void);
-  void exitServer(const std::string& what);
+  /*
+  ServerManager methods declaration
+  */
+  bool splitConfigString(std::string& config_string, std::string& config_block,\
+    std::vector<std::string>& serveral_strings);
+  bool splitServerString(std::string server_string, std::string& server_block,\
+    std::vector<std::string>& location_blocks);
+  bool isValidConfigBlock(std::string& config_block);
+  bool isValidServerBlock(std::string& server_block);
+  bool isValidLocationBlock(std::string& location_block);
+  void exitServer(const std::string& error_message);
+  void createServer(const std::string& config_file_path, char **env);
+};
 
- private:
-  WebservConfig       m_config_;
-  std::vector<Server> m_servers_;
-};  //  class ServerManager
-
-#endif  //  SERVER_MANAGER_HPP_
+#endif

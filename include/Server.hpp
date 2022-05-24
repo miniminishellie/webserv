@@ -3,30 +3,62 @@
 /*                                                        :::      ::::::::   */
 /*   Server.hpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: jihoolee <jihoolee@student.42SEOUL.kr>     +#+  +:+       +#+        */
+/*   By: bylee <bylee@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2022/05/17 16:43:04 by jihoolee          #+#    #+#             */
-/*   Updated: 2022/05/23 15:04:58 by jihoolee         ###   ########.fr       */
+/*   Created: 2022/05/17 16:57:18 by bylee             #+#    #+#             */
+/*   Updated: 2022/05/24 22:17:27 by bylee            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#ifndef SERVER_HPP_
-# define SERVER_HPP_
+#ifndef SERVER_HPP
+# define SERVER_HPP
 
-# include <vector>
-# include <map>
-# include <sys/select.h>
-# include "ServerConfig.hpp"
-# include "LocationConfig.hpp"
-# include "Connection.hpp"
+# include "Webserv.hpp"
+# include "Config.hpp"
+# include "Location.hpp"
+# include "ServerManager.hpp"
 
-class Server {
- public:
- private:
-  ServerManager*              m_server_manager_;
-  ServerConfig                m_config_;
-  int                         m_socket_fd_;
-  std::vector<LocationConfig> m_locations_;
-  std::map<int, Connection>   m_connections_;
+class ServerManager;
+
+class Server
+{
+private:
+  ServerManager*        m_manager;
+  Config*               m_config;
+  std::string           m_server_name;
+  std::string           m_host;
+  int                   m_port;
+  size_t                m_request_uri_limit_size;
+  size_t                m_request_header_limit_size;
+  size_t                m_limit_client_body_size;
+  std::string           m_default_error_page;
+  std::vector<Location> m_locations;
+
+public:
+  /*
+    Server constructor & destructor declaration
+  */
+  Server();
+  Server(ServerManager* server_manager, const std::string& server_block,\
+    std::vector<std::string>& location_blocks, Config* config);
+  Server(const Server& ref);
+  Server& operator=(const Server& ref);
+  virtual ~Server();
+
+  /*
+    Server getter declaration
+  */
+  const std::string&            get_m_server_name() const;
+  const std::string&            get_m_host() const;
+  int                           get_m_port() const;
+  size_t                        get_m_request_uri_limit_size() const;
+  size_t                        get_m_request_header_limit_size() const;
+  size_t                        get_m_limit_client_body_size() const;
+  const std::string&            get_m_default_error_page() const;
+  Config*                       get_m_config() const;
+  const std::vector<Location>&  get_m_locations() const;
 };
-#endif  //  SERVER_MANAGER_HPP_
+
+std::ostream&	operator<<(std::ostream& out, const Server& server);
+
+#endif
