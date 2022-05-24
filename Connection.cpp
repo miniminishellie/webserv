@@ -6,7 +6,7 @@
 /*   By: plee <plee@student.42.fr>                  +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/23 16:27:17 by plee              #+#    #+#             */
-/*   Updated: 2022/05/23 21:15:23 by plee             ###   ########.fr       */
+/*   Updated: 2022/05/24 21:55:32 by plee             ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -41,32 +41,13 @@ bool Connection::ParseMethod(std::string method) {
   return true;
 }
 
-void Connection::Parse(std::string start_line) {
-  m_request_.set_m_phase(Request::ON_HEADER);
-  std::vector<std::string> parsed = Split(start_line, ' ');
-  if (parsed.size() != 3)
-    std::cout << "StartLine TOKEN _NUM ERROR" << std::endl;
-  if (!ParseMethod(parsed[0]))
-    std::cout << "StartLine METHOD ERROR" << std::endl;
-  if (parsed[1].length() > REQUEST_URI_LIMIT_SIZE)
-    std::cout << "StartLine URI_LENGTH ERROR" << std::endl;
-  m_request_.set_m_uri(parsed[1]);
-  m_request_.set_m_uri_type(Request::FILE);
-  m_request_.set_m_protocol(parsed[2]);
-  if (m_request_.get_m_protocol != "HTTP/1.1")
-    throw (50501);
-  //m_special_header_count_ = 0;
-  //URI parsing 해야함
-  
-}
-
 bool Connection::ParseStartLine() {
   size_t new_line;
 
-  if ((new_line = without_body.find("\r\n")) != std::string::npos) {
-    std::string start_line = without_body.substr(0, new_line);
-    without_body = without_body.substr(new_line + 2);
-    Parse(start_line);
+  if ((new_line = m_read_buffer_client_.find("\r\n")) != std::string::npos) {
+    std::string start_line = m_read_buffer_client_.substr(0, new_line);
+    m_read_buffer_client_ = m_read_buffer_client_.erase(0, new_line + 2);
+    m_request_ = Request(this, &server, start_line);
     return true;
   }
   else if (m_read_buffer_client_.size() > REQUEST_URI_LIMIT_SIZE_MAX)
@@ -115,7 +96,7 @@ void Connection::AddHeader(std::string header) {
 
   for (size_t i = 0 ; i < key.length() ; ++i)
     key[i] = (i == 0 || key[i - 1] == '-') ? std::toupper(key[i]) : std::tolower(key[i]);
-  std::pair<std::map<std::string, std::string>::iterator, bool> result = m_headers_.insert(std::make_pair(key, value));
+  std::pair<std::map<std::string, std::string>::iterator, bool> result = m_request_.get_m_headers().insert(std::make_pair(key, value));
   if (!result.second)
     std::cout << "Error: Duplicate Header" << std::endl; // throw 40003
   if (key == "Transfer-Encoding" && value.find("chunked") != std::string::npos)
@@ -136,55 +117,170 @@ void Connection::AddHeader(std::string header) {
 }
 
 bool Connection::ParseHeader() {
-  std::string line;
   std::string& read_buf = m_read_buffer_client_;
+  std::string line;
 
-  while (getLine(read_buf, line, REQUEST_HEADER_LIMIT_SIZE_MAX) >= 0) {
-    if (!IsValidHeader(line)) {
-      std::cout << "Error: Header is not Valid" << std::endl;
+  // while (getLine(read_buf, line, REQUEST_HEADER_LIMIT_SIZE_MAX) >= 0) {
+  //   if (!IsValidHeader(line)) {
+  //     std::cout << "Error: Header is not Valid" << std::endl; //throw 40010
+  //     return false;
+  //   }
+  //   AddHeader(line);
+  //   line = "";
+  // }
+  // AddHeader(line);
+  // if (!hasKey(m_request_.get_m_headers(),"Host")) {
+  //   std::cout << "Error: Header does not have a Host" << std::endl;
+  //   return false;
+  // }
+  // return true;
+  while(getLine(read_buf, line, REQUEST_HEADER_LIMIT_SIZE_MAX) >= 0) {
+    if (line == "") {
+      if (!hasKey(m_request_.get_m_headers(), "Host")) {
+        std::cout << "Error: Header is not Valid" << std::endl; //throw 40010
+        return false;
+      }
+      return true;
+    }
+    if (IsValidHeader(line)) {
+      std::cout << "Error: Header is not Valid" << std::endl; //throw 40010
       return false;
     }
     AddHeader(line);
-    line = "";
   }
-  AddHeader(line);
-  if (!hasKey(m_request_.get_m_headers(),"Host")) {
-    std::cout << "Error: Header does not have a Host" << std::endl;
-    return false;
-  }
-  return true;
 }
 
-// bool parseHeader(Connection& connection, Request& request)
-// {
-// 	std::string& rbuf = const_cast<std::string&>(connection.get_m_rbuf_from_client());
-// 	std::string line;
+bool Connection::IsRequestHasBody() {
+  if (m_request_.get_m_method() == Request::POST) {
+    if (m_request_.get_m_transfer_type() == Request::CHUNKED)
+      return true;
+    if (hasKey(m_request_.get_m_headers(), "Content-Length") && m_request_.get_m_content_length() > 0)
+      return true;
+  }
+  return false;
+}
 
-// 	while (ft::getline(rbuf, line, REQUEST_HEADER_LIMIT_SIZE_MAX) >= 0)
-// 	{
-// 		if (line == "")
-// 		{
-// 			if (!ft::hasKey(request.get_m_headers(), "Host"))
-// 				throw (40011);
-// 			return (true);
-// 		}
-// 		if (!request.isValidHeader(line))
-// 			throw (40010);
-// 		request.addHeader(line);
-// 	}
-// 	return (false);
-// }
+int Connection::RecvBody(char *buf, int buf_size) {
+  int i = 0;
+  int read_size = 0;
+
+  if (m_request_.get_m_method() == Request::POST && m_request_.get_m_transfer_type() == Request::CHUNKED)
+    return 0;
+  if ((read_size = recv(m_client_fd_, buf, buf_size, 0)) > 0)
+    return read_size;
+  else if (read_size == -1)
+    std::cout << "IO error detected to read reqeust message without body for client " << std::endl;
+  else
+    std::cout <<"Connection close detected by client " << std::endl;
+  // if ((read_size = read(fd, buf, BUFFER_SIZE)) > 0) {
+  //   while(i < read_size) {
+  //     if (buf[i] == '\r' && i + 3 < read_size && buf[i + 1] == '\n' && buf[i + 2] == '\r' && buf[i + 3] == '\n')
+  //         break;
+  //     i++;
+  //   }
+  //   if (i == read_size)
+  //       return 0;
+  // }
+  // ft_str_index_join(body, buf, i + 4);
+  // if (read_size  == -1)
+  //   std::cout << "READ ERROR/\n";
+  // return i;
+}
+
+bool Connection::ReadGeneralBody() {
+  if (!hasKey(m_request_.get_m_headers(), "Content-Length"))
+    std::cout << "Content-Lenth required" << std::endl; //throw 41101
+  if (m_readed_size_ + static_cast<int>(m_read_buffer_client_.size()) <= m_request_.get_m_content_length()) {
+    m_request_.AddContent(m_read_buffer_client_);
+    m_readed_size_ += m_read_buffer_client_.size();
+    m_read_buffer_client_ =  m_read_buffer_client_.erase(0, m_read_buffer_client_.size());
+  }
+  else {
+    std::string part = m_read_buffer_client_.substr(0, m_request_.get_m_content_length() - m_readed_size_);
+    m_request_.AddContent(part);
+     m_read_buffer_client_ =  m_read_buffer_client_.erase(0, m_read_buffer_client_.size());
+    m_readed_size_ = m_request_.get_m_content_length();
+  }
+  return m_readed_size_ == m_request_.get_m_content_length();
+}
+
+
+int getChunkedSize(std::string& str, std::string& len) {
+  int content_length;
+
+  if (!getNewLine(str, len))
+    return -1;
+  try {
+    content_length = ft_stoi(len, 16);
+  } catch (std::exception& e) {
+      std::cout << "In chunked request, failed to convert trnasfer-size(maybe not number)" << std::endl;//throw (40017);
+    }
+  if (content_length < 0)
+    std::cout << "In chunked request, failed to convert trnasfer-size(maybe negative number)" << std::endl; //throw (40016);
+  if (content_length == 0) {
+    if (len[0] != '0')
+      std::cout << "In chunked request, failed to convert trnasfer-size(maybe not number)" << std::endl;//throw (40017);
+    }
+  return (content_length);
+}
+
+bool Connection::ReadChunkedBody() {
+  while (true) {
+    std::string len;
+    int content_length = getChunkedSize(m_read_buffer_client_, len);
+    if (content_length == -1)
+      return false;
+    if (content_length == 0) {
+      if (m_read_buffer_client_.find("\r\n") == std::string::npos) {
+        m_read_buffer_client_.insert(0, len + "\r\n");
+        return false;
+      }
+      if (m_read_buffer_client_.size() >= 2 && m_read_buffer_client_[0] == '\r' && m_read_buffer_client_[1] == '\n') {
+        m_read_buffer_client_ =  m_read_buffer_client_.erase(0, 2);
+        return true;
+      }
+        std::cout << "In chunked request, for of end-line is not '\\r\\n" << std::endl; //throw (40018);
+    }
+    if (m_read_buffer_client_.size() < content_length + 2) {
+      m_read_buffer_client_.insert(0, len + "\r\n");
+      return false;
+    }
+    if (m_read_buffer_client_.substr(content_length, 2) != "\r\n")
+      std::cout << "In chunked request, readed-size and content-length value is not equal" << std::endl; //throw (40021);
+    m_request_.AddContent(m_read_buffer_client_.substr(0, content_length));
+    m_read_buffer_client_ = m_read_buffer_client_.erase(0, content_length + 2);
+  }
+}
+
+bool Connection::ParseBody() {
+	if (m_request_.get_m_method() == Request::POST && m_request_.get_m_transfer_type() == Request::CHUNKED)
+		return true;
+	if (m_request_.get_m_transfer_type() == Request:: GENERAL)
+		return (ReadGeneralBody());
+	if (m_request_.get_m_transfer_type() == Request:: CHUNKED)
+		return (ReadChunkedBody());
+	return false;
+}
+
+void Connection::set_m_last_request()
+{
+	timeval now;
+	if (gettimeofday(&now, reinterpret_cast<struct timezone *>(NULL)) == -1)
+		return ;
+	this->m_last_request_ = now;
+	return ;
+}
 
 void Connection::RecvRequest() {
   
   char buf[BUFFER_SIZE];
   int fd;
-  int count = BUFFER_SIZE - m_read_buffer_client_.size();
+  int read_size = BUFFER_SIZE - m_read_buffer_client_.size();
   Request::Phase phase = m_request_.get_m_phase();
   m_status_ = ON_RECV;
 
-  if (phase == Request::READY && (count = RecvWithoutBody(buf, sizeof(buf))) > 0)
-    addReadbufferClient(buf, count);
+  if (phase == Request::READY && (read_size = RecvWithoutBody(buf, sizeof(buf))) > 0)
+    addReadbufferClient(buf, read_size);
   if (phase == Request::READY && ParseStartLine())
     phase = Request::ON_HEADER;
   if (phase == Request::ON_HEADER && ParseHeader()) {
@@ -192,14 +288,13 @@ void Connection::RecvRequest() {
     if (!IsRequestHasBody())
       return ;
   }
-  if (phase == Request::ON_BODY && (fd = open("./request.txt", O_RDONLY)) > 0  && (count = ReceiveBody(fd, buf, sizeof(buf), body)) > 0) {
-    ft_strjoin(body, buf, count);
-    close(fd);
-  } 
-  if (phase == Request::ON_BODY && ParseBody(body))
+  if (phase == Request::ON_BODY && (read_size = RecvBody(buf, sizeof(buf))) > 0)
+    addReadbufferClient(buf, read_size);
+  if (phase == Request::ON_BODY && ParseBody())
     phase = Request::COMPLETE;
   if (phase == Request::COMPLETE)
-    ;//set_m_last_request_at();
+    set_m_last_request();
+  m_request_.set_m_phase(phase);
 }
 
 void Connection::addReadbufferClient(const char* str, int size) { m_read_buffer_client_.append(str, size); }

@@ -6,7 +6,7 @@
 /*   By: plee <plee@student.42.fr>                  +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/23 16:26:19 by plee              #+#    #+#             */
-/*   Updated: 2022/05/23 21:15:28 by plee             ###   ########.fr       */
+/*   Updated: 2022/05/24 21:55:30 by plee             ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -18,7 +18,7 @@
 #include "Request.hpp"
 #include <sys/types.h>
 #include <sys/socket.h>
-
+#include <sys/time.h>
 
 # define BUFFER_SIZE 65536
 # define REQUEST_URI_LIMIT_SIZE 1024
@@ -45,16 +45,23 @@ class Connection {
   bool ParseHeader();
   bool IsValidHeader(std::string header);
   void AddHeader(std::string header);
+  bool IsRequestHasBody();
+  int RecvBody(char *buf, int buf_size);
+  bool ParseBody();
+  bool ReadGeneralBody();
+  bool ReadChunkedBody();
+
+  void set_m_last_request();
   
  private:
   int m_client_fd_;
-  timeval m_last_request_at_;
+  timeval m_last_request_;
   std::string m_client_ip_;
   int m_client_port_;
   Status m_status_;
   Request m_request_;
   std::string m_read_buffer_client_;
-  int readed_size;
+  int m_readed_size_;
 
 };
 #endif

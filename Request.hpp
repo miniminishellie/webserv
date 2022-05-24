@@ -15,6 +15,7 @@
 
 #include "libft.hpp"
 #include "Connection.hpp"
+#include "Server.hpp"
 #include <map>
 
 // # define BUFF_SIZE 65536
@@ -44,22 +45,11 @@ class Request
   enum TransferType { GENERAL, CHUNKED };
   Request();
   Request(const Request &request);
-	Request &operator=(const Request &request);
+  Request(Connection *connection, Server *server, std::string start_line);
+  Request &operator=(const Request &request);
   ~Request();
-  int ReceiveWithoutBody(int fd, char *buf, int buf_size);
-  bool ParseStartLine(std::string &without_body);
-  void Parse(std::string start_line);
-  bool ParseMethod(std::string method);
-  bool ParseHeader(std::string header);
-  void AddHeader(std::string header);
-  bool IsValidHeader(std::string header);
-  bool IsRequestHasBody();
-  int ReceiveBody(int fd, char *buf, int buf_size, std::string& body);
-  bool ParseBody(std::string body);
-  bool ReadGeneralBody(std::string &body);
-  bool ReadChunkedBody(std::string &body);
   void AddContent(std::string added_content);
-  // std::string without_body;
+  bool AssignLocationMatchingUri(std::string uri);
 
   //getter
   //std::string get_without_body() const;
@@ -72,6 +62,7 @@ class Request
   std::map<std::string, std::string>& get_m_headers();
   std::string get_m_content() const;
   int get_m_content_length() const;
+  timeval& get_m_start_at();
 
   //setter
   void set_m_phase(Phase phase);
@@ -89,6 +80,9 @@ class Request
   Method m_method_;
   URIType m_uri_type_;
   TransferType m_transfer_type_;
+  timeval m_start_at_;
+  Connection* m_connection_;
+	Server *m_server_;
   std::string m_uri_;
   std::string m_protocol_;
   std::map<std::string, std::string> m_headers_;
