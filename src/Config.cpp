@@ -6,7 +6,7 @@
 /*   By: bylee <bylee@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/17 16:59:39 by bylee             #+#    #+#             */
-/*   Updated: 2022/05/23 20:11:39 by bylee            ###   ########.fr       */
+/*   Updated: 2022/05/24 21:40:35 by bylee            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -73,11 +73,11 @@ std::ostream& operator<<(std::ostream& out, const Config& config){
   out << "SOFTWARE_VERSION: " << config.get_m_software_version() << std::endl;
   out << "HTTP_VERSION: " << config.get_m_http_version() << std::endl;
   out << "CGI_VERSION: " << config.get_m_cgi_version() << std::endl;
-  out << "CGI_ENVARIABLE:" << std::endl;
-  char **env = config.get_m_base_env();
-  while (env && *env) {
-    std::cout << *env << std::endl;
-    env++;
-  }
+  // out << "CGI_ENVARIABLE:" << std::endl;
+  // char **env = config.get_m_base_env();
+  // while (env && *env) {
+  //   std::cout << *env << std::endl;
+  //   env++;
+  // }
   return (out);
 }

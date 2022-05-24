@@ -6,7 +6,7 @@
 /*   By: bylee <bylee@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/20 22:18:23 by bylee             #+#    #+#             */
-/*   Updated: 2022/05/24 17:03:24 by bylee            ###   ########.fr       */
+/*   Updated: 2022/05/24 21:36:50 by bylee            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -252,6 +252,8 @@ void  ServerManager::createServer(const std::string& config_file_path, char **en
       if (!isValidLocationBlock(location_blocks[j])) // location_blocks 유효성 검사
         throw (std::invalid_argument("Location block is not valid"));
     }
-    //m_servers.push_back(Server(this, server_block, location_blocks, &this->m_config));
+    std::cout << "count : " << i + 1 << std::endl;
+    m_servers.push_back(Server(this, server_block, location_blocks, &this->m_config));
+    std::cout << Server(this, server_block, location_blocks, &this->m_config);
   }
 }
