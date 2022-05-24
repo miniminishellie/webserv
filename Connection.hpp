@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Connection.hpp                                     :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: plee <plee@student.42.fr>                  +#+  +:+       +#+        */
+/*   By: plee <plee@student.42seoul.kr>             +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/23 16:26:19 by plee              #+#    #+#             */
-/*   Updated: 2022/05/24 21:55:30 by plee             ###   ########.fr       */
+/*   Updated: 2022/05/25 01:06:54 by plee             ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -40,7 +40,6 @@ class Connection {
   int RecvWithoutBody(char *buf, int buf_size);
   bool ParseStartLine();
   void Parse(std::string start_line);
-  bool ParseMethod(std::string method);
   void addReadbufferClient(const char* str, int size);
   bool ParseHeader();
   bool IsValidHeader(std::string header);

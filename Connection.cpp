@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Connection.cpp                                     :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: plee <plee@student.42.fr>                  +#+  +:+       +#+        */
+/*   By: plee <plee@student.42seoul.kr>             +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/23 16:27:17 by plee              #+#    #+#             */
-/*   Updated: 2022/05/24 21:55:32 by plee             ###   ########.fr       */
+/*   Updated: 2022/05/25 01:06:50 by plee             ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -26,19 +26,6 @@ Connection &Connection::operator=(const Connection &connection) {
 
 Connection::~Connection() {
   
-}
-
-
-bool Connection::ParseMethod(std::string method) {
-  if (method == "GET")
-    m_request_.set_m_method(Request::GET);
-  else if (method == "POST")
-    m_request_.set_m_method(Request::POST);
-  else if (method == "DELETE")
-    m_request_.set_m_method(Request::DELETE);
-  else 
-    return false;
-  return true;
 }
 
 bool Connection::ParseStartLine() {

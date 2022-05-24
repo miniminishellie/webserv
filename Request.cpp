@@ -32,10 +32,9 @@ Request::Request(const Request &request) {
 Request::Request(Connection *connection, Server *server, std::string start_line)
 : m_connection_(connection), m_server_(server), m_transfer_type_(GENERAL)
 {
-  m_request_.set_m_phase(Request::ON_HEADER);
-  if (gettimeofday(&m_request_.get_m_start_at(), NULL) == -1)
+  m_phase_ = ON_HEADER;
+  if (gettimeofday(&_m_start_at, NULL) == -1)
     throw std::runtime_error("gettimeofday function failed in request generator");
-
   std::vector<std::string> parsed = split(start_line, ' ');
   if (parsed.size() != 3)
     std::cout << "StartLine TOKEN _NUM ERROR" << std::endl; //throw(40000)
@@ -43,9 +42,9 @@ Request::Request(Connection *connection, Server *server, std::string start_line)
     std::cout << "StartLine METHOD ERROR" << std::endl; //throw(40001)
   if (parsed[1].length() > REQUEST_URI_LIMIT_SIZE)
     std::cout << "StartLine URI_LENGTH ERROR" << std::endl;//throw(41410)
-  m_request_.set_m_uri(parsed[1]);
-  m_request_.set_m_uri_type(Request::FILE);
-  if (!m_request_.AssignLocationMatchingUri(m_request_.get_m_uri()))
+  m_uri_ = parsed[1];
+  m_uri_type_ = FILE;
+  if (!AssignLocationMatchingUri(m_uri_))
     throw (40401);
   std::string translated_path = ParseUri();
   if (translated_path.empty())
@@ -71,6 +70,18 @@ Request::~Request() {
 
 }
 
+bool Request::ParseMethod(std::string method) {
+  if (method == "GET")
+    m_request_.set_m_method(Request::GET);
+  else if (method == "POST")
+    m_request_.set_m_method(Request::POST);
+  else if (method == "DELETE")
+    m_request_.set_m_method(Request::DELETE);
+  else 
+    return false;
+  return true;
+}
+
 void Request::AddContent(std::string added_content) {
   if (m_content_.size() + added_content.size() > LIMIT_CLIENT_BODY_SIZE)
     throw (41301);
@@ -89,6 +100,47 @@ bool Request::AssignLocationMatchingUri(std::string uri)
   if (!max_uri_match)
     return false;
   return true;
+}
+
+std::string Request::ParseUri() {
+  std::string root = m_location->get_m_uri();
+  std::string uri = (root == "/") ? m_uri : m_uri.substr(m_uri.find(root) + root.size());
+	std::string main_path = uri;
+	std::string refer_path = uri;
+
+	if (ft::isDirectory(getTranslatedPath(m_location->get_m_root_path(), uri)) && !m_location->get_m_autoindex())
+		uri = m_uri = getIndexPath(get_m_location()->get_m_index(), getTranslatedPath(m_location->get_m_root_path(), uri));
+	for (std::set<std::string>::const_iterator it = m_location->get_m_cgi().begin() ; it != m_location->get_m_cgi().end() ; ++it)
+	{
+		if (uri.find(*it) != std::string::npos)
+		{
+			int idx = uri.find(*it);
+			m_uri_type = CGI_PROGRAM;
+			if (uri.find("?") != std::string::npos) {
+				m_query = uri.substr(uri.find("?") + 1);
+				uri = uri.substr(0, uri.find("?"));
+				m_path_info = m_uri.substr(0, uri.find("?"));
+			} else
+				m_path_info = m_uri;
+			main_path = uri.substr(0, idx + it->size());
+			refer_path = uri.substr(idx + it->size());
+			break ;
+		}
+	}
+	m_script_translated = getTranslatedPath(m_location->get_m_root_path(), main_path);
+	m_path_translated = getTranslatedPath(m_location->get_m_root_path(), refer_path);
+	if (m_uri_type == CGI_PROGRAM && !ft::isFile(m_script_translated))
+	{
+		if (!m_location->get_m_index().empty())
+		{
+			m_method = Request::GET;
+			m_uri = m_location->get_m_uri();
+			m_script_translated = m_location->get_m_root_path();
+		}
+		else
+			throw (40404);
+	}
+	return (m_script_translated);
 }
 
 

@@ -48,8 +48,10 @@ class Request
   Request(Connection *connection, Server *server, std::string start_line);
   Request &operator=(const Request &request);
   ~Request();
+  bool ParseMethod(std::string method);
   void AddContent(std::string added_content);
   bool AssignLocationMatchingUri(std::string uri);
+  std::string ParseUri();
 
   //getter
   //std::string get_without_body() const;
