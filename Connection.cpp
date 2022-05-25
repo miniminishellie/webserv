@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Connection.cpp                                     :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: plee <plee@student.42seoul.kr>             +#+  +:+       +#+        */
+/*   By: plee <plee@student.42.fr>                  +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/23 16:27:17 by plee              #+#    #+#             */
-/*   Updated: 2022/05/25 01:06:50 by plee             ###   ########.fr       */
+/*   Updated: 2022/05/25 20:59:51 by plee             ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -240,17 +240,16 @@ bool Connection::ReadChunkedBody() {
 }
 
 bool Connection::ParseBody() {
-	if (m_request_.get_m_method() == Request::POST && m_request_.get_m_transfer_type() == Request::CHUNKED)
-		return true;
-	if (m_request_.get_m_transfer_type() == Request:: GENERAL)
-		return (ReadGeneralBody());
-	if (m_request_.get_m_transfer_type() == Request:: CHUNKED)
-		return (ReadChunkedBody());
-	return false;
+  if (m_request_.get_m_method() == Request::POST && m_request_.get_m_transfer_type() == Request::CHUNKED)
+    return true;
+  if (m_request_.get_m_transfer_type() == Request:: GENERAL)
+    return (ReadGeneralBody());
+  if (m_request_.get_m_transfer_type() == Request:: CHUNKED)
+    return (ReadChunkedBody());
+  return false;
 }
 
-void Connection::set_m_last_request()
-{
+void Connection::set_m_last_request() {
 	timeval now;
 	if (gettimeofday(&now, reinterpret_cast<struct timezone *>(NULL)) == -1)
 		return ;

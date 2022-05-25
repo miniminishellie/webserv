@@ -6,7 +6,7 @@
 /*   By: plee <plee@student.42.fr>                  +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/23 16:26:53 by plee              #+#    #+#             */
-/*   Updated: 2022/05/24 21:55:46 by plee             ###   ########.fr       */
+/*   Updated: 2022/05/25 14:57:05 by plee             ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -113,4 +113,16 @@ int getNewLine(std::string& data, std::string& line) {
   line = rtrim(line, "\r");
   data.erase(0, pos + 1);
     return 1;
-  }
+}
+
+  bool isFile(std::string path) {
+    struct stat buf;
+    stat(path.c_str(), &buf);
+    return S_ISREG(buf.st_mode);
+}
+
+  bool isDirectory(std::string path) {
+    struct stat buf;
+    stat(path.c_str(), &buf);
+    return S_ISDIR(buf.st_mode);
+}

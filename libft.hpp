@@ -6,7 +6,7 @@
 /*   By: plee <plee@student.42.fr>                  +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/23 16:26:48 by plee              #+#    #+#             */
-/*   Updated: 2022/05/24 21:55:45 by plee             ###   ########.fr       */
+/*   Updated: 2022/05/25 21:00:03 by plee             ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -19,6 +19,7 @@
 #include <unistd.h>
 #include <vector>
 #include <set>
+#include <sys/stat.h>
 
 // namespace ft
 // {
@@ -31,6 +32,9 @@
   int ft_stoi(std::string str, size_t base = 10);
   int getLine(std::string& str, std::string &line, size_t buffer_size);
   int getNewLine(std::string& data, std::string& line);
+  bool isFile(std::string path);
+  bool isDirectory(std::string path);
+  
 //}
 
 #endif

@@ -52,6 +52,8 @@ class Request
   void AddContent(std::string added_content);
   bool AssignLocationMatchingUri(std::string uri);
   std::string ParseUri();
+  std::string GetTranslatedPath(std::string root, std::string uri);
+  std::string GetIndexPath(const std::set<std::string>& index_set, std::string base_path);
 
   //getter
   //std::string get_without_body() const;
@@ -91,6 +93,10 @@ class Request
   int m_special_header_count_;
   std::string m_content_;
   int m_content_length_;
+  std::string m_query_;
+  std::string m_script_translated_;
+  std::string m_path_translated_;
+  std::string m_path_info_;
 };
 
 template <typename T, typename V>

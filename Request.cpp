@@ -33,7 +33,7 @@ Request::Request(Connection *connection, Server *server, std::string start_line)
 : m_connection_(connection), m_server_(server), m_transfer_type_(GENERAL)
 {
   m_phase_ = ON_HEADER;
-  if (gettimeofday(&_m_start_at, NULL) == -1)
+  if (gettimeofday(&m_start_at_, NULL) == -1)
     throw std::runtime_error("gettimeofday function failed in request generator");
   std::vector<std::string> parsed = split(start_line, ' ');
   if (parsed.size() != 3)
@@ -49,14 +49,14 @@ Request::Request(Connection *connection, Server *server, std::string start_line)
   std::string translated_path = ParseUri();
   if (translated_path.empty())
     throw (40002);
-  if (isFile(translated_path) && m_uri_type != Request::CGI)
-    m_uri_type = Request::FILE;
+  if (isFile(translated_path) && m_uri_type_ != Request::CGI)
+    m_uri_type_ = Request::FILE;
   else if (isDirectory(translated_path))
-    m_uri_type = DIRECTORY;
-  else if (m_uri_type != Request::CGI)
+    m_uri_type_ = DIRECTORY;
+  else if (m_uri_type_ != Request::CGI)
     throw (40402);
-  m_request_.set_m_protocol(parsed[2]);
-  if (m_request_.get_m_protocol != "HTTP/1.1")
+  m_protocol_ = parsed[2];
+  if (m_protocol_ != "HTTP/1.1")
     throw (50501);
   //m_special_header_count_ = 0;
   //URI parsing 해야함
@@ -72,11 +72,11 @@ Request::~Request() {
 
 bool Request::ParseMethod(std::string method) {
   if (method == "GET")
-    m_request_.set_m_method(Request::GET);
+    m_method_ = GET;
   else if (method == "POST")
-    m_request_.set_m_method(Request::POST);
+    m_method_ = POST;
   else if (method == "DELETE")
-    m_request_.set_m_method(Request::DELETE);
+    m_method_ = DELETE;
   else 
     return false;
   return true;
@@ -102,47 +102,71 @@ bool Request::AssignLocationMatchingUri(std::string uri)
   return true;
 }
 
-std::string Request::ParseUri() {
-  std::string root = m_location->get_m_uri();
-  std::string uri = (root == "/") ? m_uri : m_uri.substr(m_uri.find(root) + root.size());
-	std::string main_path = uri;
-	std::string refer_path = uri;
+std::string Request::GetTranslatedPath(std::string root, std::string uri) {
+  if (uri.empty())
+    return root;
+  if (root[root.size() - 1] == '/' && uri[0] == '/')
+    uri.erase(uri.begin());
+  else if (root[root.size() - 1] != '/' && uri[0] != '/')
+    uri.insert(0, 1, '/');
+  return root + uri;
+}
+/*
+** if uri is directory, find resource that actually exists in the server
+** @param1: list of index files
+** @param2: directory of index file exists
+** @return: path of location index file
+*/
+std::string Request::GetIndexPath(const std::set<std::string>& index_set, std::string base_path) {
+  std::set<std::string>::const_iterator it = index_set.begin();
+  struct stat buf;
+  std::string path;
 
-	if (ft::isDirectory(getTranslatedPath(m_location->get_m_root_path(), uri)) && !m_location->get_m_autoindex())
-		uri = m_uri = getIndexPath(get_m_location()->get_m_index(), getTranslatedPath(m_location->get_m_root_path(), uri));
-	for (std::set<std::string>::const_iterator it = m_location->get_m_cgi().begin() ; it != m_location->get_m_cgi().end() ; ++it)
-	{
-		if (uri.find(*it) != std::string::npos)
-		{
-			int idx = uri.find(*it);
-			m_uri_type = CGI_PROGRAM;
-			if (uri.find("?") != std::string::npos) {
-				m_query = uri.substr(uri.find("?") + 1);
-				uri = uri.substr(0, uri.find("?"));
-				m_path_info = m_uri.substr(0, uri.find("?"));
-			} else
-				m_path_info = m_uri;
-			main_path = uri.substr(0, idx + it->size());
-			refer_path = uri.substr(idx + it->size());
-			break ;
-		}
-	}
-	m_script_translated = getTranslatedPath(m_location->get_m_root_path(), main_path);
-	m_path_translated = getTranslatedPath(m_location->get_m_root_path(), refer_path);
-	if (m_uri_type == CGI_PROGRAM && !ft::isFile(m_script_translated))
-	{
-		if (!m_location->get_m_index().empty())
-		{
-			m_method = Request::GET;
-			m_uri = m_location->get_m_uri();
-			m_script_translated = m_location->get_m_root_path();
-		}
-		else
-			throw (40404);
-	}
-	return (m_script_translated);
+  for (; it != index_set.end(); ++it) {
+    path = GetTranslatedPath(base_path, *it);
+    stat(path.c_str(), &buf);
+    if (S_ISREG(buf.st_mode))
+      return *it;
+  }
+  return "";
 }
 
+std::string Request::ParseUri() {
+  std::string root = m_location->get_m_uri();
+  std::string uri = (root == "/") ? m_uri_ : m_uri_.substr(m_uri_.find(root) + root.size());
+  std::string main_path = uri;
+  std::string refer_path = uri;
+
+  if (isDirectory(GetTranslatedPath(m_location->get_m_root_path(), uri)) && !m_location->get_m_autoindex())
+    uri = m_uri_ = GetIndexPath(get_m_location()->get_m_index(), GetTranslatedPath(m_location->get_m_root_path(), uri));
+  for (std::set<std::string>::const_iterator it = m_location->get_m_cgi().begin() ; it != m_location->get_m_cgi().end() ; ++it) {
+    if (uri.find(*it) != std::string::npos) {
+      int idx = uri.find(*it);
+      m_uri_type_ = CGI;
+      if (uri.find("?") != std::string::npos) {
+        m_query_ = uri.substr(uri.find("?") + 1);
+        uri = uri.substr(0, uri.find("?"));
+        m_path_info_ = m_uri_.substr(0, uri.find("?"));
+      } else
+        m_path_info_ = m_uri_;
+      main_path = uri.substr(0, idx + it->size());
+      refer_path = uri.substr(idx + it->size());
+      break ;
+    }
+  }
+  m_script_translated_ = GetTranslatedPath(m_location->get_m_root_path(), main_path);
+  m_path_translated_ = GetTranslatedPath(m_location->get_m_root_path(), refer_path);
+  if (m_uri_type_ == CGI && !isFile(m_script_translated_)) {
+    if (!m_location->get_m_index().empty()) {
+      m_method_ = GET;
+      m_uri_ = m_location->get_m_uri();
+      m_script_translated_ = m_location->get_m_root_path();
+    }
+    else
+      throw (40404);
+  }
+  return m_script_translated_;
+}
 
 //getter
 Request::Phase Request::get_m_phase() const { return m_phase_; }
@@ -154,7 +178,7 @@ std::string Request::get_m_protocol() const { return m_protocol_; }
 std::map<std::string, std::string>& Request::get_m_headers() { return  m_headers_; }
 std::string Request::get_m_content() const { return m_content_; }
 int Request::get_m_content_length() const { return m_content_length_; }
-timeval& get_m_start_at() { return m_start_at_ }
+timeval& Request::get_m_start_at() { return m_start_at_; }
 
 //setter
 void Request::set_m_phase(Phase phase) { m_phase_ = phase; }
