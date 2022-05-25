@@ -3,15 +3,15 @@
 /*                                                        :::      ::::::::   */
 /*   Connection.hpp                                     :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: plee <plee@student.42seoul.kr>             +#+  +:+       +#+        */
+/*   By: jihoolee <jihoolee@student.42SEOUL.kr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/23 16:26:19 by plee              #+#    #+#             */
-/*   Updated: 2022/05/25 01:06:54 by plee             ###   ########.fr       */
+/*   Updated: 2022/05/25 21:39:45 by jihoolee         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#ifndef CONNECTION_HPP_
-# define CONNECTION_HPP_
+#ifndef CONNECTION_HPP
+# define CONNECTION_HPP
 
 #include <map>
 #include "libft.hpp"
@@ -51,7 +51,7 @@ class Connection {
   bool ReadChunkedBody();
 
   void set_m_last_request();
-  
+
  private:
   int m_client_fd_;
   timeval m_last_request_;
