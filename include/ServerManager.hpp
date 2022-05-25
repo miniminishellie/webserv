@@ -3,54 +3,80 @@
 /*                                                        :::      ::::::::   */
 /*   ServerManager.hpp                                  :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: bylee <bylee@student.42.fr>                +#+  +:+       +#+        */
+/*   By: jihoolee <jihoolee@student.42SEOUL.kr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/20 22:17:14 by bylee             #+#    #+#             */
-/*   Updated: 2022/05/24 22:17:12 by bylee            ###   ########.fr       */
+/*   Updated: 2022/05/25 15:34:47 by jihoolee         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#ifndef SERVERMANAGER_HPP
-# define SERVERMANAGER_HPP
+#ifndef SERVERMANAGER_HPP_
+# define SERVERMANAGER_HPP_
 
-# include "Config.hpp"
-# include "Location.hpp"
+# include <sys/time.h>
+# include <sys/event.h>
+# include <sys/types.h>
+# include <iostream>
+# include <vector>
+# include <string>
+# include <exception>
+# include "WebservConfig.hpp"
 # include "Server.hpp"
-# include "Libft.hpp"
 
-class Server;
+# define DEFAULT_CONFIG_PATH  "config/default.conf"
+# define PORT_HTTP 80
+# define PORT_HTTPS 443
+# define PORT_REGISTERED_MIN 1024
+# define PORT_REGISTERED_MAX 49151
 
-class ServerManager
-{
-private:
-  std::vector<Server> m_servers;
-  Config m_config;
+# define REQUEST_URI_LIMIT_SIZE_MIN 64
+# define REQUEST_URI_LIMIT_SIZE_MAX 8192
+# define REQUEST_HEADER_LIMIT_SIZE_MIN 64
+# define REQUEST_HEADER_LIMIT_SIZE_MAX 8192
+# define LIMIT_CLIENT_BODY_SIZE_MAX 200000000
 
-public:
+class ServerManager {
+ public:
   /*
   ServerManager constructor & destructor declaration
   */
   ServerManager();
   ServerManager(const ServerManager& ref);
-  ServerManager& operator=(const ServerManager& ref);
+
   virtual ~ServerManager();
 
-  /*
-  ServerMananger getter declaration
-  */
+  ServerManager& operator=(const ServerManager& ref);
 
-  /*
-  ServerManager methods declaration
-  */
-  bool splitConfigString(std::string& config_string, std::string& config_block,\
-    std::vector<std::string>& serveral_strings);
-  bool splitServerString(std::string server_string, std::string& server_block,\
-    std::vector<std::string>& location_blocks);
-  bool isValidConfigBlock(std::string& config_block);
-  bool isValidServerBlock(std::string& server_block);
-  bool isValidLocationBlock(std::string& location_block);
-  void exitServer(const std::string& error_message);
-  void createServer(const std::string& config_file_path, char **env);
-};
+  void  createServers(const std::string& config_file_path, char* env[]);
+  void  exitWebserv(const std::string& error_message);
+  void  runServers(void);
 
-#endif
+ private:
+  void  changeSignal_(int sig);
+  void  changeEvents_(std::vector<struct kevent>& change_list,
+                      uintptr_t ident,
+                      int16_t filter,
+                      uint16_t flags,
+                      uint32_t fflags,
+                      intptr_t data,
+                      void* udata);
+  bool splitConfigString_(std::string& config_string,
+      std::string& config_block,
+      std::vector<std::string>& serveral_strings);
+  bool splitServerString_(std::string server_string, std::string& server_block,
+      std::vector<std::string>& location_blocks);
+  bool isValidConfigBlock_(std::string& config_block);
+  bool isValidServerBlock_(std::string& server_block);
+  bool isValidLocationBlock_(std::string& location_block);
+
+  bool                        m_is_running_;
+  WebservConfig               m_config_;
+  // std::map<int, Server> m_servers_;
+  std::vector<Server>         m_servers_;
+
+  int                         m_kqueue_;
+  struct kevent*              m_returned_events_;
+  std::vector<struct kevent>  m_change_list_;
+};  // class ServerManager
+
+#endif  //  SERVER_MANGER_HPP_

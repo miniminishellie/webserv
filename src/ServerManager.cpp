@@ -3,39 +3,82 @@
 /*                                                        :::      ::::::::   */
 /*   ServerManager.cpp                                  :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: bylee <bylee@student.42.fr>                +#+  +:+       +#+        */
+/*   By: jihoolee <jihoolee@student.42SEOUL.kr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2022/05/20 22:18:23 by bylee             #+#    #+#             */
-/*   Updated: 2022/05/24 22:03:08 by bylee            ###   ########.fr       */
+/*   Created: 2022/05/17 18:42:34 by jihoolee          #+#    #+#             */
+/*   Updated: 2022/05/25 18:04:47 by jihoolee         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "../include/ServerManager.hpp"
+#include "ServerManager.hpp"
+#include "Libft.hpp"
 
-ServerManager::ServerManager(){
+ServerManager::ServerManager(void)
+    : m_is_running_(false),
+      m_config_(),
+      m_servers_() {}
 
-}
-ServerManager::ServerManager(const ServerManager& ref){
-  m_servers = ref.m_servers;
-  m_config = ref.m_config;
-}
-ServerManager& ServerManager::operator=(const ServerManager& ref){
+ServerManager::ServerManager(const ServerManager& ref)
+    : m_is_running_(ref.m_is_running_),
+      m_config_(ref.m_config_),
+      m_servers_(ref.m_servers_),
+      m_kqueue_(ref.m_kqueue_),
+      m_returned_events_(ref.m_returned_events_),
+      m_change_list_(ref.m_change_list_) {}
+
+ServerManager::~ServerManager(void) {}
+
+ServerManager& ServerManager::operator=(const ServerManager& ref) {
   if (this == &ref)
-    return (*this);
-  m_servers = ref.m_servers;
-  m_config = ref.m_config;
-  return (*this);
+    return *this;
+  m_is_running_ = ref.m_is_running_;
+  m_config_ = ref.m_config_;
+  m_servers_ = ref.m_servers_;
+  m_kqueue_ = ref.m_kqueue_;
+  m_returned_events_ = ref.m_returned_events_;
+  m_change_list_ = ref.m_change_list_;
+  return *this;
 }
-ServerManager::~ServerManager(){
 
+void  ServerManager::createServers(const std::string& config_file_path, char* env[]) {
+  std::string config_string = ft::getStringFromFile(config_file_path); //config_string에 .conf 파일 통째로 string에 담김
+  std::string config_block;
+  std::vector<std::string> server_strings;
+
+  if (!splitConfigString_(config_string, config_block, server_strings)) // config_block에 nginx directives가 string에 통쨰로, server_strings에 nginx directives 제외한 나머지들이 string container에 server block별로 담김
+    throw (std::invalid_argument("Failed to split config strings"));
+  if (!isValidConfigBlock_(config_block)) // config_block 유효성 검사
+    throw(std::invalid_argument("Config block is not valid"));
+  m_config_ = WebservConfig(config_block, env); // 유효성 검사 마친 config_block m_config에 생성자 호출해 정보 저장
+  // if ((m_kqueue_ = kqueue()) == -1)
+  //   std::runtime_error("kqueue() Error");
+  for (size_t i = 0; i < server_strings.size(); ++i){
+    std::string server_block;
+    std::vector<std::string> location_blocks;
+    if (!splitServerString_(server_strings[i], server_block, location_blocks)) // server_block에 location block 들을 제외한 server directives가 string에 통째로, location_blocks에 locations block들이 한 블록씩 통째로 string으로 담김(특이하게 마지막 '}' 이 놈을 안담음)
+      throw std::invalid_argument("Failed to split Server string");
+    if (!isValidServerBlock_(server_block)) // server_block 유효성 검사
+      throw std::invalid_argument("Server block is not valid");
+    for (size_t j = 0; j < location_blocks.size(); ++j){
+      if (!isValidLocationBlock_(location_blocks[j])) // location_blocks 유효성 검사
+        throw std::invalid_argument("Location block is not valid");
+    }
+    std::cout << "count : " << i + 1 << std::endl;
+    m_servers_.push_back(Server(this, &this->m_config_, server_block, location_blocks));
+    // changeEvents_(m_change_list_, new_server.get_m_socket_fd(), EVFILT_READ,
+    //               EV_ADD | EV_ENABLE, 0, 0, NULL);
+    std::cout << "hi";
+    std::cout << Server(this, &this->m_config_, server_block, location_blocks);
+  }
 }
 
-namespace
-{
-enum IncludeMode { INCLUDE_START, INCLUDE_END, INCLUDE_BOTH, INCLUDE_NOT, };
+namespace {
+enum IncludeMode { INCLUDE_START, INCLUDE_END, INCLUDE_BOTH, INCLUDE_NOT };
 
-std::vector<std::string> groupLineWithCondition(std::vector<std::string>& lines, \
-  const std::string& start_line, const std::string& end_line, IncludeMode mode){
+std::vector<std::string> groupLineWithCondition(std::vector<std::string>& lines,
+                                                const std::string& start_line,
+                                                const std::string& end_line,
+                                                IncludeMode mode) {
   bool is_group_line = false;
   std::vector<std::string> result;
   std::vector<std::string> remain;
@@ -67,12 +110,12 @@ std::vector<std::string> groupLineWithCondition(std::vector<std::string>& lines,
   return (result);
 }
 
-  bool isValidIpByte(std::string s) { return ((ft::stoi(s) >= 0) && (ft::stoi(s) <= 255)); }
-  bool isValidCgi(std::string data) { return (data[0] == '.'); }
-  bool isDigit(char c) { return (c >= '0' && c <= '9'); }
-} //namespace
+bool isValidIpByte(std::string s) { return ((ft::stoi(s) >= 0) && (ft::stoi(s) <= 255)); }
+bool isValidCgi(std::string data) { return (data[0] == '.'); }
+bool isDigit(char c) { return (c >= '0' && c <= '9'); }
+}  //  anonymous namespace
 
-bool ServerManager::splitConfigString(std::string& config_string, std::string& config_block,\
+bool ServerManager::splitConfigString_(std::string& config_string, std::string& config_block,\
   std::vector<std::string>& server_block){
   std::vector<std::string> lines = ft::splitStringByChar(config_string);
 
@@ -83,7 +126,7 @@ bool ServerManager::splitConfigString(std::string& config_string, std::string& c
   return (!config_block.empty() && server_block.size() != 0);
 }
 
-bool ServerManager::splitServerString(std::string server_string,\
+bool ServerManager::splitServerString_(std::string server_string,\
   std::string& server_block, std::vector<std::string>& location_blocks){
   std::vector<std::string> lines = ft::splitStringByChar(server_string);
 
@@ -94,7 +137,7 @@ bool ServerManager::splitServerString(std::string server_string,\
   return (!server_block.empty() && location_blocks.size() != 0);
 }
 
-bool ServerManager::isValidConfigBlock(std::string& config_block){
+bool ServerManager::isValidConfigBlock_(std::string& config_block){
   std::map<std::string, std::string>map_block = ft::stringVectorToMap(ft::splitStringByChar(config_block, '\n'), ' ');
   std::string key[4] = {"SOFTWARE_NAME", "SOFTWARE_VERSION", "HTTP_VERSION", "CGI_VERSION"};
 
@@ -115,7 +158,7 @@ bool ServerManager::isValidConfigBlock(std::string& config_block){
   return (true);
 }
 
-bool ServerManager::isValidServerBlock(std::string& server_block){
+bool ServerManager::isValidServerBlock_(std::string& server_block){
   std::map<std::string, std::string>map_block = ft::stringVectorToMap(ft::splitStringByChar(server_block, '\n'), ' ');
   std::string key[6] = {"host", "port","REQUEST_URI_LIMIT_SIZE",\
     "REQUEST_HEADER_LIMIT_SIZE", "DEFAULT_ERROR_PAGE", "LIMIT_CLIENT_BODY_SIZE"};
@@ -137,8 +180,8 @@ bool ServerManager::isValidServerBlock(std::string& server_block){
   if (port != PORT_HTTP && port != PORT_HTTPS && (port < PORT_REGISTERED_MIN || PORT_REGISTERED_MAX > 49151))
     return (false);
 
-  // for (std::vector<Server>::iterator it = m_servers.begin(); it != m_servers.end(); ++it) {
-  //   if (it->get_m_port() == port)
+  // for (std::vector<Server>::iterator it = m_servers_.begin(); it != m_servers_.end(); ++it) {
+  //   if (it->get_m_config().get_m_port() == port)
   //     return (false);
   // }
 
@@ -150,10 +193,10 @@ bool ServerManager::isValidServerBlock(std::string& server_block){
   if (header_limit < REQUEST_HEADER_LIMIT_SIZE_MIN || header_limit > REQUEST_HEADER_LIMIT_SIZE_MAX)
     return (false);
 
-  int fd;
-  if ((fd = open(map_block.find(key[4])->second.c_str(), O_RDONLY)) == -1)
-    return (false);
-  close(fd);
+  // int fd;
+  // if ((fd = open(map_block.find(key[4])->second.c_str(), O_RDONLY)) == -1)
+  //   return (false);
+  // close(fd);
 
   int body_limit = std::atoi(map_block.find(key[5])->second.c_str());
   if (body_limit < 0 || body_limit > LIMIT_CLIENT_BODY_SIZE_MAX)
@@ -161,7 +204,7 @@ bool ServerManager::isValidServerBlock(std::string& server_block){
   return (true);
 }
 
-bool ServerManager::isValidLocationBlock(std::string& location_block){
+bool ServerManager::isValidLocationBlock_(std::string& location_block){
   std::map<std::string, std::string> map_block = \
     ft::stringVectorToMap(ft::splitStringByChar(location_block, '\n'), ' ');
 
@@ -226,34 +269,51 @@ bool ServerManager::isValidLocationBlock(std::string& location_block){
   return (true);
 }
 
-void ServerManager::exitServer(const std::string& error_message){
-  std::cout << error_message << std::endl;
-  exit(1);
+void ServerManager::runServers(void) {
+  // signal(SIGINT, this->changeSignal_);
+
+  // struct timeval  timeout;
+
+  // timeout.tv_sec = 0;
+  // timeout.tv_usec = 0;
+  // m_is_running_ = true;
+
+  // int new_events;
+  // struct kevent* curr_event;
+
+  // while (m_is_running_) {
+  //   if ((new_events = kevent(m_kqueue_, &m_change_list_[0],
+  //                             m_change_list_.size(), m_returned_events_,
+  //                             1024, NULL)) == -1)
+  //     throw std::runtime_error("kevent() Error");
+  //   m_change_list_.clear();
+  //   for (int i = 0; i < new_events; ++i) {
+  //     curr_event = &m_returned_events_[i];
+  //     if (curr_event->flags & EV_ERROR) {
+  //     }
+  //   }
+  // }
 }
 
-void  ServerManager::createServer(const std::string& config_file_path, char **env){
-  std::string config_string = ft::getStringFromFile(config_file_path); //config_string에 .conf 파일 통째로 string에 담김
-  std::string config_block;
-  std::vector<std::string> server_strings;
+void ServerManager::exitWebserv(const std::string& what) {
+  std::cerr << what << std::endl;
+  exit(EXIT_SUCCESS);
+}
 
-  if (!splitConfigString(config_string, config_block, server_strings)) // config_block에 nginx directives가 string에 통쨰로, server_strings에 nginx directives 제외한 나머지들이 string container에 server block별로 담김
-    throw (std::invalid_argument("Failed to split config strings"));
-  if (!isValidConfigBlock(config_block)) // config_block 유효성 검사
-    throw(std::invalid_argument("Config block is not valid"));
-  m_config = Config(config_block, env); // 유효성 검사 마친 config_block m_config에 생성자 호출해 정보 저장
-  for (size_t i = 0; i < server_strings.size(); ++i){
-    std::string server_block;
-    std::vector<std::string> location_blocks;
-    if (!splitServerString(server_strings[i], server_block, location_blocks)) // server_block에 location block 들을 제외한 server directives가 string에 통째로, location_blocks에 locations block들이 한 블록씩 통째로 string으로 담김(특이하게 마지막 '}' 이 놈을 안담음)
-      throw(std::invalid_argument("Failed to split Server string"));
-    if (!isValidServerBlock(server_block)) // server_block 유효성 검사
-      throw(std::invalid_argument("Server block is not valid"));
-    for (size_t j = 0; j < location_blocks.size(); ++j){
-      if (!isValidLocationBlock(location_blocks[j])) // location_blocks 유효성 검사
-        throw (std::invalid_argument("Location block is not valid"));
-    }
-    std::cout << "count : " << i + 1 << std::endl;
-    m_servers.push_back(Server(this, server_block, location_blocks, &this->m_config));
-    std::cout << Server(this, server_block, location_blocks, &this->m_config);
-  }
+void ServerManager::changeSignal_(int sig) {
+  (void)sig;
+  m_is_running_ = false;
+}
+
+void ServerManager::changeEvents_(std::vector<struct kevent>& change_list,
+                                  uintptr_t ident,
+                                  int16_t filter,
+                                  uint16_t flags,
+                                  uint32_t fflags,
+                                  intptr_t data,
+                                  void* udata) {
+  struct kevent temp_event;
+
+  EV_SET(&temp_event, ident, filter, flags, fflags, data, udata);
+  change_list.push_back(temp_event);
 }

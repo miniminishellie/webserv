@@ -3,16 +3,17 @@
 /*                                                        :::      ::::::::   */
 /*   WebservConfig.hpp                                  :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: bylee <bylee@student.42.fr>                +#+  +:+       +#+        */
+/*   By: jihoolee <jihoolee@student.42SEOUL.kr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/17 18:36:01 by jihoolee          #+#    #+#             */
-/*   Updated: 2022/05/24 22:08:44 by bylee            ###   ########.fr       */
+/*   Updated: 2022/05/25 17:19:07 by jihoolee         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #ifndef WEBSERV_CONFIG_HPP_
 # define WEBSERV_CONFIG_HPP_
 
+# include <iostream>
 # include <string>
 
 class WebservConfig {
@@ -30,7 +31,7 @@ class WebservConfig {
   std::string get_m_http_version() const;
   std::string get_m_cgi_version() const;
   char        **get_m_base_env() const;
-  
+
  private:
   std::string m_software_name_;
   std::string m_software_version_;
