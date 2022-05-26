@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Request.hpp                                        :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: jihoolee <jihoolee@student.42SEOUL.kr>     +#+  +:+       +#+        */
+/*   By: plee <plee@student.42.fr>                  +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/21 15:39:29 by jihoolee          #+#    #+#             */
-/*   Updated: 2022/05/26 15:58:20 by jihoolee         ###   ########.fr       */
+/*   Updated: 2022/05/26 20:30:38 by plee             ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -18,6 +18,7 @@
 # include <map>
 
 class Server;
+class LocationConfig;
 class Connection;
 
 class Request {
@@ -53,7 +54,7 @@ class Request {
   std::string GetTranslatedPath(std::string root, std::string uri);
   std::string GetIndexPath(const std::set<std::string>& index_set, std::string base_path);
 
-  //getter
+  /* getter function*/
   //std::string get_without_body() const;
   Phase get_m_phase() const;
   Method get_m_method() const;
@@ -66,7 +67,7 @@ class Request {
   int get_m_content_length() const;
   timeval& get_m_start_at();
 
-  //setter
+  /* setter function*/
   void set_m_phase(Phase phase);
   void set_m_method(Method method);
   void set_m_uri_type(URIType uritype);
@@ -80,9 +81,12 @@ class Request {
  private:
   Server*                             m_server_;
   Connection*                         m_connection_;
+  LocationConfig*                     m_location_;
   timeval                             m_start_at_;
   Phase                               m_phase_;
   Method                              m_method_;
+  std::string                         m_content_;
+  int                                 m_content_length_;
   URIType                             m_uri_type_;
   TransferType                        m_transfer_type_;
   std::string                         m_uri_;
@@ -91,11 +95,8 @@ class Request {
   int                                 m_special_header_count_;
   std::string                         m_query_;
   std::string                         m_script_translated_;
-  std::string                         m_parth_translated_;
+  std::string                         m_path_translated_;
   std::string                         m_path_info_;
 };  //  class Request
-
-template <typename T, typename V>
-  bool hasKey(T container, V value) { return (container.find(value) != container.end()); }
 
 #endif  //  REQUEST_HPP_

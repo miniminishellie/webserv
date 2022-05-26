@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Libft.cpp                                          :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: jihoolee <jihoolee@student.42SEOUL.kr>     +#+  +:+       +#+        */
+/*   By: plee <plee@student.42.fr>                  +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/21 15:14:43 by bylee             #+#    #+#             */
-/*   Updated: 2022/05/26 15:07:07 by jihoolee         ###   ########.fr       */
+/*   Updated: 2022/05/26 19:17:52 by plee             ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -45,6 +45,76 @@ void bzero(void *data, size_t len) {
   str = (unsigned char *)data;
   while (len > 0)
     str[--len] = 0;
+}
+
+void strjoin(std::string& str, const std::string& buf, size_t n) {
+  str.append(buf.c_str(), n);
+}
+
+void str_index_join(std::string& str, const std::string& buf, size_t i) {
+  str.append(buf.c_str());
+  str = str.substr(i);
+}
+
+int stoi(std::string str, size_t base) {
+  int sign = 1;
+  long long value = 0;
+  long long int_max = INT_MAX;
+  std::string digit = "0123456789abcdefghijklmnopqrstuvwxyz";
+
+  if (str.empty())
+    return (0);
+  if (str[0] == '-')
+    sign = -1;
+  if (str[0] == '-' || str[0] == '+')
+    str.erase(str.begin());
+  if (str.empty() || digit.find(str[0]) == std::string::npos)
+    return 0;
+  while (!str.empty() && digit.find(str[0]) < base) {
+    value *= base;
+    value += digit.find(str[0]);
+    if ((sign == 1 && value > int_max) || (sign == -1 && value > int_max + 1))
+      throw (std::overflow_error("stoi overflow"));
+    str.erase(str.begin());
+  }
+  return static_cast<int>(sign * value);
+}
+
+
+int getLine(std::string& str, std::string &line, size_t buffer_size) {
+  if (str.find("\n") == std::string::npos || str.find("\n") > buffer_size) {
+    if (str.size() >= buffer_size)
+      throw (std::overflow_error("line size is greather than buffer size"));
+    else
+      return -1;
+  }
+  int pos = str.find("\n");
+  line = str.substr(0, pos);
+  line = rtrimString(line, "\r");
+  str.erase(0, pos + 1);
+  return line.size();
+}
+
+int getNewLine(std::string& data, std::string& line) {
+  if (data.find("\n") == std::string::npos)
+    return 0;
+  int pos = data.find("\n");
+  line = data.substr(0, pos);
+  line = rtrimString(line, "\r");
+  data.erase(0, pos + 1);
+    return 1;
+}
+
+  bool isFile(std::string path) {
+    struct stat buf;
+    stat(path.c_str(), &buf);
+    return S_ISREG(buf.st_mode);
+}
+
+  bool isDirectory(std::string path) {
+    struct stat buf;
+    stat(path.c_str(), &buf);
+    return S_ISDIR(buf.st_mode);
 }
 
 std::string ltrimString(const std::string& str, const std::string& seps) {
@@ -157,4 +227,5 @@ std::vector<std::string> split(std::string s, char c) {
     result.push_back(s);
   return result;
 }
+
 }  //  namespace ft

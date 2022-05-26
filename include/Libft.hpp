@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Libft.hpp                                          :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: jihoolee <jihoolee@student.42SEOUL.kr>     +#+  +:+       +#+        */
+/*   By: plee <plee@student.42.fr>                  +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/21 15:11:56 by bylee             #+#    #+#             */
-/*   Updated: 2022/05/26 15:06:17 by jihoolee         ###   ########.fr       */
+/*   Updated: 2022/05/26 20:20:54 by plee             ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,15 +14,24 @@
 # define LIBFT_HPP_
 
 # include <unistd.h>
+# include <iostream>
 # include <fcntl.h>
 # include <string>
 # include <map>
 # include <set>
 # include <vector>
+#include <sys/stat.h>
 
 namespace ft {
 int   stoi(std::string str, size_t base = 10);
 void  bzero(void *data, size_t len);
+void  strjoin(std::string& str, const std::string& buf, size_t n);
+void  str_index_join(std::string& str, const std::string& buf, size_t i);
+int   stoi(std::string str, size_t base = 10);
+int   getLine(std::string& str, std::string &line, size_t buffer_size);
+int   getNewLine(std::string& data, std::string& line);
+bool  isFile(std::string path);
+bool  isDirectory(std::string path);
 
 std::string                         ltrimString(const std::string& str,
                                                 const std::string& seps = " ");
@@ -40,7 +49,6 @@ std::map<std::string, std::string>  stringVectorToMap(
                                       char sep = ':');
 std::set<std::string>               stringVectorToSet(
                                       std::vector<std::string> stringVector);
-std::vector<std::string>            split(std::string s, char c);
 
 template <typename T, typename V>
 bool hasKey(T container, V value) {

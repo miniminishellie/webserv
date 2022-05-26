@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Request.cpp                                        :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: jihoolee <jihoolee@student.42SEOUL.kr>     +#+  +:+       +#+        */
+/*   By: plee <plee@student.42.fr>                  +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/26 14:54:39 by jihoolee          #+#    #+#             */
-/*   Updated: 2022/05/26 15:57:21 by jihoolee         ###   ########.fr       */
+/*   Updated: 2022/05/26 20:39:57 by plee             ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -25,10 +25,12 @@ Request::Request(void)
       m_uri_(),
       m_protocol_(),
       m_headers_(),
+      m_content_(),
+      m_content_length_().
       m_special_header_count_(0),
       m_query_(),
       m_script_translated_(),
-      m_parth_translated_(),
+      m_path_translated_(),
       m_path_info_() {
   m_start_at_.tv_sec = 0;
   m_start_at_.tv_usec = 0;
@@ -41,7 +43,7 @@ Request::Request(Connection* connection, Server* server, std::string start_line)
       m_phase_(ON_HEADER) {
   if (gettimeofday(&m_start_at_, NULL) == -1)
     throw std::runtime_error("gettimeofday function failed in request generator");
-  std::vector<std::string> parsed = split(start_line, ' ');
+  std::vector<std::string> parsed = ft::splitStringByChar(start_line, ' ');
   if (parsed.size() != 3)
     std::cout << "StartLine TOKEN _NUM ERROR" << std::endl; //throw(40000)
   if (!ParseMethod(parsed[0]))
@@ -55,9 +57,9 @@ Request::Request(Connection* connection, Server* server, std::string start_line)
   std::string translated_path = ParseUri();
   if (translated_path.empty())
     throw (40002);
-  if (isFile(translated_path) && m_uri_type_ != Request::CGI)
+  if (ft::isFile(translated_path) && m_uri_type_ != Request::CGI)
     m_uri_type_ = Request::FILE;
-  else if (isDirectory(translated_path))
+  else if (ft::isDirectory(translated_path))
     m_uri_type_ = DIRECTORY;
   else if (m_uri_type_ != Request::CGI)
     throw (40402);
@@ -65,7 +67,6 @@ Request::Request(Connection* connection, Server* server, std::string start_line)
   if (m_protocol_ != "HTTP/1.1")
     throw (50501);
   //m_special_header_count_ = 0;
-  //URI parsing 해야함
 }
 
 Request::Request(const Request &r)
@@ -78,15 +79,38 @@ Request::Request(const Request &r)
       m_uri_(r.m_uri_),
       m_protocol_(r.m_protocol_),
       m_headers_(r.m_headers_),
+      m_content_(r.m_content_),
+      m_content_length_(r.m_content_length_),
       m_special_header_count_(r.m_special_header_count_),
       m_query_(r.m_query_),
       m_script_translated_(r.m_script_translated_),
-      m_parth_translated_(r.m_parth_translated_),
+      m_path_translated_(r.m_path_translated_),
       m_path_info_(r.m_path_info_) { }
 
 Request::~Request() {
 
 }
+
+Request::Phase Request::get_m_phase() const { return m_phase_; }
+Request::Method Request::get_m_method() const { return m_method_; }
+Request::URIType Request::get_m_uri_type() const { return m_uri_type_; }
+Request::TransferType Request::get_m_transfer_type() const { return m_transfer_type_; }
+std::string Request::get_m_uri() const { return m_uri_; }
+std::string Request::get_m_protocol() const { return m_protocol_; }
+std::map<std::string, std::string>& Request::get_m_headers() { return  m_headers_; }
+std::string Request::get_m_content() const { return m_content_; }
+int Request::get_m_content_length() const { return m_content_length_; }
+timeval& Request::get_m_start_at() { return m_start_at_; }
+
+void Request::set_m_phase(Phase phase) { m_phase_ = phase; }
+void Request::set_m_method(Method method) { m_method_ = method; }
+void Request::set_m_uri_type(URIType uritype) { m_uri_type_ = uritype; }
+void Request::set_m_transfer_type(TransferType transfertype) { m_transfer_type_ = transfertype; }
+void Request::set_m_uri(std::string uri) { m_uri_ = uri; }
+void Request::set_m_protocol(std::string protocol) { m_protocol_ = protocol; }
+void Request::set_m_content(std::string content) { m_content_ = content; }
+void Request::set_m_content_length(int length) { m_content_length_ = length; }
+
 
 bool Request::ParseMethod(std::string method) {
   if (method == "GET")
@@ -109,9 +133,9 @@ void Request::AddContent(std::string added_content) {
 bool Request::AssignLocationMatchingUri(std::string uri)
 {
   size_t max_uri_match = 0;
-  for (std::vector<Location>::const_iterator it = m_server->get_m_locations().begin() ; it != m_server->get_m_locations().end() ; ++it) {
+  for (std::vector<LocationConfig>::const_iterator it = m_server_->get_m_locations().begin() ; it != m_server_->get_m_locations().end() ; ++it) {
     if (std::strncmp(it->get_m_uri().c_str(), uri.c_str(), it->get_m_uri().length()) == 0 && it->get_m_uri().length() > max_uri_match) {
-      m_location = const_cast<Location *>(&(*it));
+      m_location_ = const_cast<LocationConfig *>(&(*it));
       max_uri_match = it->get_m_uri().length();
     }
   }
@@ -129,12 +153,7 @@ std::string Request::GetTranslatedPath(std::string root, std::string uri) {
     uri.insert(0, 1, '/');
   return root + uri;
 }
-/*
-** if uri is directory, find resource that actually exists in the server
-** @param1: list of index files
-** @param2: directory of index file exists
-** @return: path of location index file
-*/
+
 std::string Request::GetIndexPath(const std::set<std::string>& index_set, std::string base_path) {
   std::set<std::string>::const_iterator it = index_set.begin();
   struct stat buf;
@@ -150,14 +169,14 @@ std::string Request::GetIndexPath(const std::set<std::string>& index_set, std::s
 }
 
 std::string Request::ParseUri() {
-  std::string root = m_location->get_m_uri();
+  std::string root = m_location_->get_m_uri();
   std::string uri = (root == "/") ? m_uri_ : m_uri_.substr(m_uri_.find(root) + root.size());
   std::string main_path = uri;
   std::string refer_path = uri;
 
-  if (isDirectory(GetTranslatedPath(m_location->get_m_root_path(), uri)) && !m_location->get_m_autoindex())
-    uri = m_uri_ = GetIndexPath(get_m_location()->get_m_index(), GetTranslatedPath(m_location->get_m_root_path(), uri));
-  for (std::set<std::string>::const_iterator it = m_location->get_m_cgi().begin() ; it != m_location->get_m_cgi().end() ; ++it) {
+  if (ft::isDirectory(GetTranslatedPath(m_location_->get_m_root_path(), uri)) && !m_location_->get_m_autoindex())
+    uri = m_uri_ = GetIndexPath(m_location_->get_m_index(), GetTranslatedPath(m_location_->get_m_root_path(), uri));
+  for (std::set<std::string>::const_iterator it = m_location_->get_m_cgi().begin() ; it != m_location_->get_m_cgi().end() ; ++it) {
     if (uri.find(*it) != std::string::npos) {
       int idx = uri.find(*it);
       m_uri_type_ = CGI;
@@ -172,38 +191,16 @@ std::string Request::ParseUri() {
       break ;
     }
   }
-  m_script_translated_ = GetTranslatedPath(m_location->get_m_root_path(), main_path);
-  m_path_translated_ = GetTranslatedPath(m_location->get_m_root_path(), refer_path);
-  if (m_uri_type_ == CGI && !isFile(m_script_translated_)) {
-    if (!m_location->get_m_index().empty()) {
+  m_script_translated_ = GetTranslatedPath(m_location_->get_m_root_path(), main_path);
+  m_path_translated_ = GetTranslatedPath(m_location_->get_m_root_path(), refer_path);
+  if (m_uri_type_ == CGI && !ft::isFile(m_script_translated_)) {
+    if (!m_location_->get_m_index().empty()) {
       m_method_ = GET;
-      m_uri_ = m_location->get_m_uri();
-      m_script_translated_ = m_location->get_m_root_path();
+      m_uri_ = m_location_->get_m_uri();
+      m_script_translated_ = m_location_->get_m_root_path();
     }
     else
       throw (40404);
   }
   return m_script_translated_;
 }
-
-//getter
-Request::Phase Request::get_m_phase() const { return m_phase_; }
-Request::Method Request::get_m_method() const { return m_method_; }
-Request::URIType Request::get_m_uri_type() const { return m_uri_type_; }
-Request::TransferType Request::get_m_transfer_type() const { return m_transfer_type_; }
-std::string Request::get_m_uri() const { return m_uri_; }
-std::string Request::get_m_protocol() const { return m_protocol_; }
-std::map<std::string, std::string>& Request::get_m_headers() { return  m_headers_; }
-std::string Request::get_m_content() const { return m_content_; }
-int Request::get_m_content_length() const { return m_content_length_; }
-timeval& Request::get_m_start_at() { return m_start_at_; }
-
-//setter
-void Request::set_m_phase(Phase phase) { m_phase_ = phase; }
-void Request::set_m_method(Method method) { m_method_ = method; }
-void Request::set_m_uri_type(URIType uritype) { m_uri_type_ = uritype; }
-void Request::set_m_transfer_type(TransferType transfertype) { m_transfer_type_ = transfertype; }
-void Request::set_m_uri(std::string uri) { m_uri_ = uri; }
-void Request::set_m_protocol(std::string protocol) { m_protocol_ = protocol; }
-void Request::set_m_content(std::string content) { m_content_ = content; }
-void Request::set_m_content_length(int length) { m_content_length_ = length; }

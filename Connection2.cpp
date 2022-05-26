@@ -6,7 +6,7 @@
 /*   By: plee <plee@student.42.fr>                  +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/23 16:27:17 by plee              #+#    #+#             */
-/*   Updated: 2022/05/25 20:59:51 by plee             ###   ########.fr       */
+/*   Updated: 2022/05/26 16:11:52 by plee             ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -279,7 +279,7 @@ void Connection::RecvRequest() {
   if (phase == Request::ON_BODY && ParseBody())
     phase = Request::COMPLETE;
   if (phase == Request::COMPLETE)
-    set_m_last_request();
+    set_m_last_request_at();
   m_request_.set_m_phase(phase);
 }
 

@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Connection.hpp                                     :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: jihoolee <jihoolee@student.42SEOUL.kr>     +#+  +:+       +#+        */
+/*   By: plee <plee@student.42.fr>                  +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/23 16:26:19 by plee              #+#    #+#             */
-/*   Updated: 2022/05/25 21:39:45 by jihoolee         ###   ########.fr       */
+/*   Updated: 2022/05/26 16:14:41 by plee             ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -50,7 +50,7 @@ class Connection {
   bool ReadGeneralBody();
   bool ReadChunkedBody();
 
-  void set_m_last_request();
+  void set_m_last_request_at();
 
  private:
   int m_client_fd_;

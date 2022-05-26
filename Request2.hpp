@@ -13,7 +13,6 @@
 #ifndef REQUEST_HPP
 #define REQUEST_HPP
 
-#include "libft.hpp"
 #include "Connection.hpp"
 #include "Server.hpp"
 #include <map>
