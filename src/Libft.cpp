@@ -6,7 +6,7 @@
 /*   By: jihoolee <jihoolee@student.42SEOUL.kr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/21 15:14:43 by bylee             #+#    #+#             */
-/*   Updated: 2022/05/25 12:49:26 by jihoolee         ###   ########.fr       */
+/*   Updated: 2022/05/26 15:07:07 by jihoolee         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -142,5 +142,19 @@ stringVectorToSet(std::vector<std::string> stringVector) {
     ret.insert(stringVector[i]);
   }
   return (ret);
+}
+
+std::vector<std::string> split(std::string s, char c) {
+  std::vector<std::string> result;
+  size_t pos = 0;
+
+  while ((pos = s.find(c)) != std::string::npos) {
+    if (pos != 0)
+      result.push_back(s.substr(0, pos));
+    s.erase(0, pos + 1);
+  }
+  if (s.length() != 0)
+    result.push_back(s);
+  return result;
 }
 }  //  namespace ft
