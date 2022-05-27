@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   ServerManager.cpp                                  :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: jihoolee <jihoolee@student.42SEOUL.kr>     +#+  +:+       +#+        */
+/*   By: bylee <bylee@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/17 18:42:34 by jihoolee          #+#    #+#             */
-/*   Updated: 2022/05/25 18:04:47 by jihoolee         ###   ########.fr       */
+/*   Updated: 2022/05/27 20:09:21 by bylee            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -55,6 +55,7 @@ void  ServerManager::createServers(const std::string& config_file_path, char* en
   for (size_t i = 0; i < server_strings.size(); ++i){
     std::string server_block;
     std::vector<std::string> location_blocks;
+
     if (!splitServerString_(server_strings[i], server_block, location_blocks)) // server_block에 location block 들을 제외한 server directives가 string에 통째로, location_blocks에 locations block들이 한 블록씩 통째로 string으로 담김(특이하게 마지막 '}' 이 놈을 안담음)
       throw std::invalid_argument("Failed to split Server string");
     if (!isValidServerBlock_(server_block)) // server_block 유효성 검사
@@ -63,12 +64,11 @@ void  ServerManager::createServers(const std::string& config_file_path, char* en
       if (!isValidLocationBlock_(location_blocks[j])) // location_blocks 유효성 검사
         throw std::invalid_argument("Location block is not valid");
     }
-    std::cout << "count : " << i + 1 << std::endl;
+    std::cout << "------------------------------------------------------" << std::endl;
+    std::cout << Server(this, &this->m_config_, server_block, location_blocks);
     m_servers_.push_back(Server(this, &this->m_config_, server_block, location_blocks));
     // changeEvents_(m_change_list_, new_server.get_m_socket_fd(), EVFILT_READ,
     //               EV_ADD | EV_ENABLE, 0, 0, NULL);
-    std::cout << "hi";
-    std::cout << Server(this, &this->m_config_, server_block, location_blocks);
   }
 }
 
@@ -180,10 +180,10 @@ bool ServerManager::isValidServerBlock_(std::string& server_block){
   if (port != PORT_HTTP && port != PORT_HTTPS && (port < PORT_REGISTERED_MIN || PORT_REGISTERED_MAX > 49151))
     return (false);
 
-  // for (std::vector<Server>::iterator it = m_servers_.begin(); it != m_servers_.end(); ++it) {
-  //   if (it->get_m_config().get_m_port() == port)
-  //     return (false);
-  // }
+  for (std::vector<Server>::iterator it = m_servers_.begin(); it != m_servers_.end(); ++it) {
+    if (it->get_m_config().get_m_port() == port)
+      return (false);
+  }
 
   int uri_limit = std::atoi(map_block.find(key[2])->second.c_str());
   if (uri_limit < REQUEST_URI_LIMIT_SIZE_MIN || uri_limit > REQUEST_URI_LIMIT_SIZE_MAX)
@@ -193,10 +193,10 @@ bool ServerManager::isValidServerBlock_(std::string& server_block){
   if (header_limit < REQUEST_HEADER_LIMIT_SIZE_MIN || header_limit > REQUEST_HEADER_LIMIT_SIZE_MAX)
     return (false);
 
-  // int fd;
-  // if ((fd = open(map_block.find(key[4])->second.c_str(), O_RDONLY)) == -1)
-  //   return (false);
-  // close(fd);
+  int fd;
+  if ((fd = open(map_block.find(key[4])->second.c_str(), O_RDONLY)) == -1)
+    return (false);
+  close(fd);
 
   int body_limit = std::atoi(map_block.find(key[5])->second.c_str());
   if (body_limit < 0 || body_limit > LIMIT_CLIENT_BODY_SIZE_MAX)
@@ -225,20 +225,21 @@ bool ServerManager::isValidLocationBlock_(std::string& location_block){
   if (location.size() != 1 || location[0].empty() || location[0][0] != '/')
     return (false);
 
-  // struct stat buf;
-  // std::string root = map_block[key[1]];
-  // stat(root.c_str(), &buf);
-  // if (!S_ISDIR(buf.st_mode) || root.empty() || (root != "/" && root.size() > 1 && root[root.size() - 1] == '/'))
-  //   return (false);
-  // if ((ft::hasKey(map_block, key[3]) && !ft::hasKey(map_block, key[4]))
-  // || (!ft::hasKey(map_block, key[3]) && ft::hasKey(map_block, key[4])))
-  //  return (false);
-  // if (ft::hasKey(map_block, key[4]))
-  // {
-  //  stat(map_block[key[4]].c_str(), &buf);
-  //  if (!S_ISREG(buf.st_mode))
-  //    return (false);
-  // }
+  struct stat buf;
+  std::string root = map_block[key[1]];
+  stat(root.c_str(), &buf);
+  if (/*!S_ISDIR(buf.st_mode) ||*/ root.empty() || (root != "/" && root.size() > 1 && root[root.size() - 1] == '/'))
+    return (false);
+  if ((ft::hasKey(map_block, key[3]) && !ft::hasKey(map_block, key[4]))
+  || (!ft::hasKey(map_block, key[3]) && ft::hasKey(map_block, key[4])))
+   return (false);
+  if (ft::hasKey(map_block, key[4]))
+  {
+   stat(map_block[key[4]].c_str(), &buf);
+   if (!S_ISREG(buf.st_mode))
+     return (false);
+  }
+
   if (ft::hasKey(map_block, key[2]))
   {
     std::set<std::string> data_set = ft::stringVectorToSet(ft::splitStringByChar(map_block[key[2]], ' '));

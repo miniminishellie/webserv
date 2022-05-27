@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   LocationConfig.cpp                                 :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: jihoolee <jihoolee@student.42SEOUL.kr>     +#+  +:+       +#+        */
+/*   By: bylee <bylee@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/25 12:43:59 by jihoolee          #+#    #+#             */
-/*   Updated: 2022/05/25 17:43:37 by jihoolee         ###   ########.fr       */
+/*   Updated: 2022/05/27 19:29:14 by bylee            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -23,7 +23,7 @@ LocationConfig::LocationConfig(const std::string& location_uri,
     ft::stringVectorToMap(ft::splitStringByChar(location_block, '\n'), ' ');
   this->m_root_path_ = map_block.find("root")->second;
   if (ft::hasKey(map_block, "auth_basic_realm"))
-    // this->m_auth_basic_realm_ = map_block.find("auth_basic_realm")->second;
+    this->m_auth_basic_realm_ = map_block.find("auth_basic_realm")->second;
   if (ft::hasKey(map_block, "auth_basic_file")) {
     std::vector<std::string> content =
       ft::splitStringByChar(
@@ -37,7 +37,7 @@ LocationConfig::LocationConfig(const std::string& location_uri,
         throw std::invalid_argument("auth_basic_file format is invalid");
       std::string key = ft::trimString(v[0]);
       std::string value = ft::trimString(v[1]);
-      // this->m_auth_basic_file_[key] = value;
+      this->m_auth_basic_file_[key] = value;
     }
   }
   if (ft::hasKey(map_block, "allow_method")) {
@@ -70,8 +70,8 @@ LocationConfig::LocationConfig(const std::string& location_uri,
 LocationConfig::LocationConfig(const LocationConfig& ref)
     : m_uri_(ref.m_uri_),
       m_root_path_(ref.m_root_path_),
-      // m_auth_basic_realm_(ref.m_auth_basic_realm_),
-      // m_auth_basic_file_(ref.m_auth_basic_file_),
+      m_auth_basic_realm_(ref.m_auth_basic_realm_),
+      m_auth_basic_file_(ref.m_auth_basic_file_),
       m_allow_method_(ref.m_allow_method_),
       m_index_(ref.m_index_),
       m_cgi_(ref.m_cgi_),
@@ -85,8 +85,8 @@ LocationConfig& LocationConfig::operator=(const LocationConfig& ref) {
     return *this;
   m_uri_ = ref.m_uri_;
   m_root_path_ = ref.m_root_path_;
-  // m_auth_basic_realm_ = ref.m_auth_basic_realm_;
-  // m_auth_basic_file_ = ref.m_auth_basic_file_;
+  m_auth_basic_realm_ = ref.m_auth_basic_realm_;
+  m_auth_basic_file_ = ref.m_auth_basic_file_;
   m_allow_method_ = ref.m_allow_method_;
   m_index_ = ref.m_index_;
   m_cgi_ = ref.m_cgi_;
@@ -101,12 +101,12 @@ std::string                               LocationConfig::get_m_uri() const {
 std::string                               LocationConfig::get_m_root_path() const {
   return m_root_path_;
 }
-// std::string                               LocationConfig::get_m_auth_basic_realm() const {
-  // return m_auth_basic_realm_;
-// }
-// const std::map<std::string, std::string>& LocationConfig::get_m_auth_basic_file() const {
-//   return m_auth_basic_file_;
-// }
+std::string                               LocationConfig::get_m_auth_basic_realm() const {
+  return m_auth_basic_realm_;
+}
+const std::map<std::string, std::string>& LocationConfig::get_m_auth_basic_file() const {
+  return m_auth_basic_file_;
+}
 std::set<std::string>                     LocationConfig::get_m_allow_method() const {
   return m_allow_method_;
 }
@@ -126,7 +126,7 @@ size_t                                    LocationConfig::get_m_limit_client_bod
 std::ostream&	operator<<(std::ostream& out, const LocationConfig& location) {
   out << "URI: " << location.get_m_uri() << std::endl;
   out << "ROOT_PATH: " << location.get_m_root_path() << std::endl;
-  // out << "AUTH_BASIC_REALM: " << location.get_m_auth_basic_realm() << std::endl;
+  out << "AUTH_BASIC_REALM: " << location.get_m_auth_basic_realm() << std::endl;
   out << "ALLOW_METHOD: " << ft::containerToString(location.get_m_allow_method(), "\n") << std::endl;
   out << "INDEX: " << ft::containerToString(location.get_m_index(), "\n") << std::endl;
   out << "CGI: " << ft::containerToString(location.get_m_cgi(), "\n") << std::endl;
