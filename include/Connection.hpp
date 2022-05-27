@@ -6,7 +6,7 @@
 /*   By: jihoolee <jihoolee@student.42SEOUL.kr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/18 21:23:44 by jihoolee          #+#    #+#             */
-/*   Updated: 2022/05/26 14:52:23 by jihoolee         ###   ########.fr       */
+/*   Updated: 2022/05/27 16:53:32 by jihoolee         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -25,6 +25,7 @@ class Connection {
   enum Status { ON_WAIT, TO_SEND, ON_SEND, TO_EXECUTE, ON_EXECUTE, ON_RECV };
 
   Connection(void);
+  Connection(int client_fd, std::string& client_ip, int client_port);
   Connection(const Connection &c);
 
   ~Connection(void);

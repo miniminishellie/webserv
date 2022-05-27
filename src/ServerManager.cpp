@@ -6,7 +6,7 @@
 /*   By: jihoolee <jihoolee@student.42SEOUL.kr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/17 18:42:34 by jihoolee          #+#    #+#             */
-/*   Updated: 2022/05/25 18:04:47 by jihoolee         ###   ########.fr       */
+/*   Updated: 2022/05/27 20:07:50 by jihoolee         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -16,17 +16,31 @@
 ServerManager::ServerManager(void)
     : m_is_running_(false),
       m_config_(),
-      m_servers_() {}
+      m_servers_(),
+      m_kqueue_(-1),
+      m_fd_set_(),
+      m_change_list_() {
+  memset(m_returned_events_, 0, sizeof(struct kevent) * 1024);
+}
 
 ServerManager::ServerManager(const ServerManager& ref)
     : m_is_running_(ref.m_is_running_),
       m_config_(ref.m_config_),
       m_servers_(ref.m_servers_),
       m_kqueue_(ref.m_kqueue_),
-      m_returned_events_(ref.m_returned_events_),
-      m_change_list_(ref.m_change_list_) {}
+      m_fd_set_(),
+      m_change_list_(ref.m_change_list_) {
+  memcpy(m_returned_events_, ref.m_returned_events_,
+          sizeof(struct kevent) * 1024);
+}
 
-ServerManager::~ServerManager(void) {}
+ServerManager::~ServerManager(void) {
+  m_is_running_ = false;
+  m_servers_.clear();
+  m_kqueue_ = -1;
+  m_fd_set_.clear();
+  m_change_list_.clear();
+}
 
 ServerManager& ServerManager::operator=(const ServerManager& ref) {
   if (this == &ref)
@@ -35,7 +49,9 @@ ServerManager& ServerManager::operator=(const ServerManager& ref) {
   m_config_ = ref.m_config_;
   m_servers_ = ref.m_servers_;
   m_kqueue_ = ref.m_kqueue_;
-  m_returned_events_ = ref.m_returned_events_;
+  m_fd_set_ = ref.m_fd_set_;
+  memcpy(m_returned_events_, ref.m_returned_events_,
+          sizeof(struct kevent) * 1024);
   m_change_list_ = ref.m_change_list_;
   return *this;
 }
@@ -50,11 +66,12 @@ void  ServerManager::createServers(const std::string& config_file_path, char* en
   if (!isValidConfigBlock_(config_block)) // config_block 유효성 검사
     throw(std::invalid_argument("Config block is not valid"));
   m_config_ = WebservConfig(config_block, env); // 유효성 검사 마친 config_block m_config에 생성자 호출해 정보 저장
-  // if ((m_kqueue_ = kqueue()) == -1)
-  //   std::runtime_error("kqueue() Error");
+  if ((m_kqueue_ = kqueue()) == -1)
+    std::runtime_error("kqueue() Error");
   for (size_t i = 0; i < server_strings.size(); ++i){
     std::string server_block;
     std::vector<std::string> location_blocks;
+
     if (!splitServerString_(server_strings[i], server_block, location_blocks)) // server_block에 location block 들을 제외한 server directives가 string에 통째로, location_blocks에 locations block들이 한 블록씩 통째로 string으로 담김(특이하게 마지막 '}' 이 놈을 안담음)
       throw std::invalid_argument("Failed to split Server string");
     if (!isValidServerBlock_(server_block)) // server_block 유효성 검사
@@ -63,13 +80,105 @@ void  ServerManager::createServers(const std::string& config_file_path, char* en
       if (!isValidLocationBlock_(location_blocks[j])) // location_blocks 유효성 검사
         throw std::invalid_argument("Location block is not valid");
     }
-    std::cout << "count : " << i + 1 << std::endl;
-    m_servers_.push_back(Server(this, &this->m_config_, server_block, location_blocks));
-    // changeEvents_(m_change_list_, new_server.get_m_socket_fd(), EVFILT_READ,
-    //               EV_ADD | EV_ENABLE, 0, 0, NULL);
-    std::cout << "hi";
-    std::cout << Server(this, &this->m_config_, server_block, location_blocks);
+    Server new_server =
+        Server(this, &this->m_config_, server_block, location_blocks);
+
+    addServer_(new_server);
+    changeEvents_(m_change_list_, new_server.get_m_socket_fd(), EVFILT_READ,
+                  EV_ADD | EV_ENABLE, 0, 0, NULL);\
+    insertFd(new_server.get_m_socket_fd(), FD_SERVER);
+    // std::cout << Server(this, &this->m_config_, server_block, location_blocks);
   }
+}
+
+void ServerManager::exitWebserv(const std::string& what) {
+  std::cerr << what << std::endl;
+  exit(EXIT_SUCCESS);
+}
+
+void ServerManager::runServers(void) {
+  signal(SIGINT, this->changeSignal_);
+
+  struct timeval  timeout;
+
+  timeout.tv_sec = 0;
+  timeout.tv_usec = 0;
+  m_is_running_ = true;
+
+  int new_events;
+  struct kevent* curr_event;
+
+  while (m_is_running_) {
+    if ((new_events = kevent(m_kqueue_, &m_change_list_[0],
+                              m_change_list_.size(), m_returned_events_,
+                              1024, NULL)) == -1)
+      throw std::runtime_error("kevent() Error");
+    m_change_list_.clear();
+    for (int i = 0; i < new_events; ++i) {
+      curr_event = &m_returned_events_[i];
+      if (curr_event->flags & EV_ERROR)
+        throw std::runtime_error("socket error in kevent");
+      else if (curr_event->flags & EVFILT_READ) {
+        switch (m_fd_set_[curr_event->ident]) {
+          case FD_SERVER: {
+          // if (m_connections.size() >= (1024 / m_manager->get_m_servers().size())) {
+          //    int fd = getUnuseConnectionFd();
+          //    if (fd == -1)
+          //      return ;
+          //    closeConnection(fd);
+          // }
+            if (!m_servers_[curr_event->ident].acceptNewConnection()) {
+              // std::cerr << "[Failed][Connection][Server:"
+              //               + m_server_name + "][Host:" + m_host
+	            //               + "] Failed to create new connection.\n"
+              std::cerr << "accept new connection failed";
+            }
+            break;
+          }
+          case FD_CLIENT: {
+
+            break;
+          }
+        }
+      }
+    }
+  }
+}
+
+void ServerManager::insertFd(int fd, FdType type) {
+  m_fd_set_[fd] = type;
+}
+
+void ServerManager::addEvent(uintptr_t ident,
+                              int16_t filter,
+                              uint16_t flags,
+                              uint32_t fflags,
+                              intptr_t data,
+                              void* udata) {
+  changeEvents_(m_change_list_, ident, filter, flags, fflags, data, udata);
+}
+
+void ServerManager::addServer_(const Server& s) {
+  if (m_servers_.count(s.get_m_socket_fd()) == 0)
+    m_servers_[s.get_m_socket_fd()] = s;
+}
+
+void ServerManager::changeSignal_(int sig) {
+  (void)sig;
+  m_is_running_ = false;
+}
+
+void ServerManager::changeEvents_(std::vector<struct kevent>& change_list,
+                                  uintptr_t ident,
+                                  int16_t filter,
+                                  uint16_t flags,
+                                  uint32_t fflags,
+                                  intptr_t data,
+                                  void* udata) {
+  struct kevent temp_event;
+
+  EV_SET(&temp_event, ident, filter, flags, fflags, data, udata);
+  change_list.push_back(temp_event);
 }
 
 namespace {
@@ -267,53 +376,4 @@ bool ServerManager::isValidLocationBlock_(std::string& location_block){
       return (false);
   }
   return (true);
-}
-
-void ServerManager::runServers(void) {
-  // signal(SIGINT, this->changeSignal_);
-
-  // struct timeval  timeout;
-
-  // timeout.tv_sec = 0;
-  // timeout.tv_usec = 0;
-  // m_is_running_ = true;
-
-  // int new_events;
-  // struct kevent* curr_event;
-
-  // while (m_is_running_) {
-  //   if ((new_events = kevent(m_kqueue_, &m_change_list_[0],
-  //                             m_change_list_.size(), m_returned_events_,
-  //                             1024, NULL)) == -1)
-  //     throw std::runtime_error("kevent() Error");
-  //   m_change_list_.clear();
-  //   for (int i = 0; i < new_events; ++i) {
-  //     curr_event = &m_returned_events_[i];
-  //     if (curr_event->flags & EV_ERROR) {
-  //     }
-  //   }
-  // }
-}
-
-void ServerManager::exitWebserv(const std::string& what) {
-  std::cerr << what << std::endl;
-  exit(EXIT_SUCCESS);
-}
-
-void ServerManager::changeSignal_(int sig) {
-  (void)sig;
-  m_is_running_ = false;
-}
-
-void ServerManager::changeEvents_(std::vector<struct kevent>& change_list,
-                                  uintptr_t ident,
-                                  int16_t filter,
-                                  uint16_t flags,
-                                  uint32_t fflags,
-                                  intptr_t data,
-                                  void* udata) {
-  struct kevent temp_event;
-
-  EV_SET(&temp_event, ident, filter, flags, fflags, data, udata);
-  change_list.push_back(temp_event);
 }

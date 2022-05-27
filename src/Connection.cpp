@@ -6,7 +6,7 @@
 /*   By: jihoolee <jihoolee@student.42SEOUL.kr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/25 21:44:42 by jihoolee          #+#    #+#             */
-/*   Updated: 2022/05/26 14:52:20 by jihoolee         ###   ########.fr       */
+/*   Updated: 2022/05/27 16:54:05 by jihoolee         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -34,6 +34,8 @@ Connection &Connection::operator=(const Connection &operand) {
   m_read_buffer_client_ = operand.m_read_buffer_client_;
   m_request_ = operand.m_request_;
 }
+
+Connection(int client_fd, std::string& client_ip, int client_port) {}
 
 void Connection::RecvRequest(void) {
   char buf[BUFFER_SIZE];

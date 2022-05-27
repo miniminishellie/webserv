@@ -6,7 +6,7 @@
 /*   By: jihoolee <jihoolee@student.42SEOUL.kr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/21 15:14:43 by bylee             #+#    #+#             */
-/*   Updated: 2022/05/26 15:07:07 by jihoolee         ###   ########.fr       */
+/*   Updated: 2022/05/27 16:50:38 by jihoolee         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -156,5 +156,31 @@ std::vector<std::string> split(std::string s, char c) {
   if (s.length() != 0)
     result.push_back(s);
   return result;
+}
+
+std::string to_string(long long int n) {
+  long long int   nb;
+  std::string		str;
+
+  if (n == 0)
+    return ("0");
+  nb = n;
+  while (nb != 0) {
+    str.insert(str.begin(), static_cast<char>((ft::abs(nb % 10) + 48)));
+    nb = nb / 10;
+  }
+  if (n < 0)
+    str.insert(str.begin(), '-');
+  return (str);
+}
+
+std::string inet_ntoa(unsigned int address) {
+  std::string ret;
+
+  ret = ft::to_string(address & 0xFF) + ".";
+  ret.append(ft::to_string ((address >> 8) & 0xFF) + ".");
+  ret.append(ft::to_string ((address >> 16) & 0xFF) + ".");
+  ret.append(ft::to_string ((address >> 24) & 0xFF) + ".");
+  return ret;
 }
 }  //  namespace ft

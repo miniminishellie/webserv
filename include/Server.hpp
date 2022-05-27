@@ -6,7 +6,7 @@
 /*   By: jihoolee <jihoolee@student.42SEOUL.kr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/17 16:57:18 by bylee             #+#    #+#             */
-/*   Updated: 2022/05/25 17:51:08 by jihoolee         ###   ########.fr       */
+/*   Updated: 2022/05/27 16:31:02 by jihoolee         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -51,13 +51,17 @@ class Server {
   ServerManager*                      get_m_server_manager() const;
   WebservConfig*                      get_m_webserv_config() const;
   ServerConfig                        get_m_config() const;
+  int                                 get_m_socket_fd() const;
   const std::vector<LocationConfig>&  get_m_locations() const;
   const std::map<int, Connection>&    get_m_connections() const;
+
+  bool acceptNewConnection(void);
 
  private:
   ServerManager*              m_server_manager_;
   WebservConfig*              m_webserv_config_;
   ServerConfig                m_config_;
+  int                         m_socket_fd_;
   std::vector<LocationConfig> m_locations_;
   std::map<int, Connection>   m_connections_;
 };  //  class Server

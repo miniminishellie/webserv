@@ -6,7 +6,7 @@
 /*   By: jihoolee <jihoolee@student.42SEOUL.kr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/20 22:17:14 by bylee             #+#    #+#             */
-/*   Updated: 2022/05/25 15:34:47 by jihoolee         ###   ########.fr       */
+/*   Updated: 2022/05/27 19:29:21 by jihoolee         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -17,6 +17,7 @@
 # include <sys/event.h>
 # include <sys/types.h>
 # include <iostream>
+# include <map>
 # include <vector>
 # include <string>
 # include <exception>
@@ -40,6 +41,7 @@ class ServerManager {
   /*
   ServerManager constructor & destructor declaration
   */
+  enum FdType { FD_SERVER, FD_CLIENT };
   ServerManager();
   ServerManager(const ServerManager& ref);
 
@@ -50,8 +52,16 @@ class ServerManager {
   void  createServers(const std::string& config_file_path, char* env[]);
   void  exitWebserv(const std::string& error_message);
   void  runServers(void);
+  void  insertFd(int fd, FdType type);
+  void  addEvent(uintptr_t ident,
+                    int16_t filter,
+                    uint16_t flags,
+                    uint32_t fflags,
+                    intptr_t data,
+                    void* udata);
 
  private:
+  void  addServer_(const Server& s);
   void  changeSignal_(int sig);
   void  changeEvents_(std::vector<struct kevent>& change_list,
                       uintptr_t ident,
@@ -60,22 +70,23 @@ class ServerManager {
                       uint32_t fflags,
                       intptr_t data,
                       void* udata);
-  bool splitConfigString_(std::string& config_string,
-      std::string& config_block,
-      std::vector<std::string>& serveral_strings);
+  bool  splitConfigString_(std::string& config_string,
+          std::string& config_block,
+          std::vector<std::string>& serveral_strings);
   bool splitServerString_(std::string server_string, std::string& server_block,
-      std::vector<std::string>& location_blocks);
+          std::vector<std::string>& location_blocks);
   bool isValidConfigBlock_(std::string& config_block);
   bool isValidServerBlock_(std::string& server_block);
   bool isValidLocationBlock_(std::string& location_block);
 
   bool                        m_is_running_;
   WebservConfig               m_config_;
-  // std::map<int, Server> m_servers_;
-  std::vector<Server>         m_servers_;
+  std::map<int, Server>       m_servers_;
+  // std::vector<Server>         m_servers_;
 
   int                         m_kqueue_;
-  struct kevent*              m_returned_events_;
+  std::map<int, FdType>       m_fd_set_;
+  struct kevent               m_returned_events_[1024];
   std::vector<struct kevent>  m_change_list_;
 };  // class ServerManager
 

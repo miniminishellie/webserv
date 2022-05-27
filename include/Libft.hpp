@@ -6,7 +6,7 @@
 /*   By: jihoolee <jihoolee@student.42SEOUL.kr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/21 15:11:56 by bylee             #+#    #+#             */
-/*   Updated: 2022/05/26 15:06:17 by jihoolee         ###   ########.fr       */
+/*   Updated: 2022/05/27 16:50:59 by jihoolee         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -41,6 +41,8 @@ std::map<std::string, std::string>  stringVectorToMap(
 std::set<std::string>               stringVectorToSet(
                                       std::vector<std::string> stringVector);
 std::vector<std::string>            split(std::string s, char c);
+std::string to_string(long long int n);
+std::string inet_ntoa(unsigned int address);
 
 template <typename T, typename V>
 bool hasKey(T container, V value) {
