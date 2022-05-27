@@ -6,7 +6,7 @@
 /*   By: plee <plee@student.42.fr>                  +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/26 14:54:39 by jihoolee          #+#    #+#             */
-/*   Updated: 2022/05/27 15:34:26 by plee             ###   ########.fr       */
+/*   Updated: 2022/05/27 16:19:12 by plee             ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -86,6 +86,32 @@ Request::Request(const Request &r)
       m_script_translated_(r.m_script_translated_),
       m_path_translated_(r.m_path_translated_),
       m_path_info_(r.m_path_info_) { }
+
+Request &Request::operator=(const Request &ref)
+{
+  if (this == &ref)
+    return (*this);
+  m_server_ = ref.m_server_;
+  m_connection_ = ref.m_connection_;
+  m_location_ = ref.m_location_;
+  m_serverconfig_ = ref.m_serverconfig_;
+  m_start_at_ = ref.m_start_at_;
+  m_phase_ = ref.m_phase_;
+  m_method_ = ref.m_method_;
+  m_content_ = ref.m_content_;
+  m_content_length_ = ref.m_content_length_;
+  m_uri_type_ = ref.m_uri_type_;
+  m_transfer_type_ = ref.m_transfer_type_;
+  m_uri_ = ref.m_uri_;
+  m_protocol_ = ref.m_protocol_;
+  m_headers_ = ref.m_headers_;
+  m_special_header_count_ = ref.m_special_header_count_;
+  m_query_ = ref.m_query_;
+  m_script_translated_ = ref.m_script_translated_;
+  m_path_translated_ = ref.m_path_translated_;
+  m_path_info_ = ref.m_path_info_;
+  return (*this);
+}
 
 Request::~Request() {
 

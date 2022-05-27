@@ -6,7 +6,7 @@
 /*   By: plee <plee@student.42.fr>                  +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/21 15:14:43 by bylee             #+#    #+#             */
-/*   Updated: 2022/05/26 19:17:52 by plee             ###   ########.fr       */
+/*   Updated: 2022/05/27 16:04:07 by plee             ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -55,31 +55,6 @@ void str_index_join(std::string& str, const std::string& buf, size_t i) {
   str.append(buf.c_str());
   str = str.substr(i);
 }
-
-int stoi(std::string str, size_t base) {
-  int sign = 1;
-  long long value = 0;
-  long long int_max = INT_MAX;
-  std::string digit = "0123456789abcdefghijklmnopqrstuvwxyz";
-
-  if (str.empty())
-    return (0);
-  if (str[0] == '-')
-    sign = -1;
-  if (str[0] == '-' || str[0] == '+')
-    str.erase(str.begin());
-  if (str.empty() || digit.find(str[0]) == std::string::npos)
-    return 0;
-  while (!str.empty() && digit.find(str[0]) < base) {
-    value *= base;
-    value += digit.find(str[0]);
-    if ((sign == 1 && value > int_max) || (sign == -1 && value > int_max + 1))
-      throw (std::overflow_error("stoi overflow"));
-    str.erase(str.begin());
-  }
-  return static_cast<int>(sign * value);
-}
-
 
 int getLine(std::string& str, std::string &line, size_t buffer_size) {
   if (str.find("\n") == std::string::npos || str.find("\n") > buffer_size) {

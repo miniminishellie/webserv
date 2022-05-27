@@ -6,7 +6,7 @@
 /*   By: plee <plee@student.42.fr>                  +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/25 21:44:42 by jihoolee          #+#    #+#             */
-/*   Updated: 2022/05/27 15:43:27 by plee             ###   ########.fr       */
+/*   Updated: 2022/05/27 16:21:05 by plee             ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -34,6 +34,7 @@ Connection &Connection::operator=(const Connection &operand) {
   m_readed_size_ = operand.m_readed_size_;
   m_read_buffer_client_ = operand.m_read_buffer_client_;
   m_request_ = operand.m_request_;
+  return (*this);
 }
 
 Connection::~Connection(void) {}
@@ -311,25 +312,25 @@ void Connection::RecvRequest(void) {
   m_request_.set_m_phase(phase);
 }
 
-bool Connection::RunRecvAndSolve() {
-  try {
-    RecvRequest();
-  } catch (int status_code) {
-    createResponse(connection, status_code);
-    return true;
-  } catch (Server::IOError& e) {
-    throw (e);
-  } catch (std::exception& e) {
-    ft::log(ServerManager::log_fd, std::string("[Failed][Request] Failed to create request because ") + e.what());
-    createResponse(connection, 50001);
-    return true;
-  }
-  const Request& request = connection.get_m_request();
-  if (request.get_m_phase() == Request::COMPLETE) {
-    writeCreateNewRequestLog(request);
-    connection.set_m_status(Connection::ON_EXECUTE);
-    solveRequest(connection, connection.get_m_request());
-    return true;
-  }
-  return false;
-}
+//bool Connection::RunRecvAndSolve() {
+  // try {
+  //   RecvRequest();
+  // } catch (int status_code) {
+  //   createResponse(connection, status_code);
+  //   return true;
+  // } catch (Server::IOError& e) {
+  //   throw (e);
+  // } catch (std::exception& e) {
+  //   ft::log(ServerManager::log_fd, std::string("[Failed][Request] Failed to create request because ") + e.what());
+  //   createResponse(connection, 50001);
+  //   return true;
+  // }
+  // const Request& request = connection.get_m_request();
+  // if (request.get_m_phase() == Request::COMPLETE) {
+  //   writeCreateNewRequestLog(request);
+  //   connection.set_m_status(Connection::ON_EXECUTE);
+  //   solveRequest(connection, connection.get_m_request());
+  //   return true;
+  // }
+  // return false;
+//}
