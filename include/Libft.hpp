@@ -6,7 +6,7 @@
 /*   By: plee <plee@student.42.fr>                  +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/21 15:11:56 by bylee             #+#    #+#             */
-/*   Updated: 2022/05/26 20:20:54 by plee             ###   ########.fr       */
+/*   Updated: 2022/05/27 16:04:32 by plee             ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -23,7 +23,6 @@
 #include <sys/stat.h>
 
 namespace ft {
-int   stoi(std::string str, size_t base = 10);
 void  bzero(void *data, size_t len);
 void  strjoin(std::string& str, const std::string& buf, size_t n);
 void  str_index_join(std::string& str, const std::string& buf, size_t i);

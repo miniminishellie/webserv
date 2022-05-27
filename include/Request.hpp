@@ -6,7 +6,7 @@
 /*   By: plee <plee@student.42.fr>                  +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/21 15:39:29 by jihoolee          #+#    #+#             */
-/*   Updated: 2022/05/27 15:31:50 by plee             ###   ########.fr       */
+/*   Updated: 2022/05/27 16:19:32 by plee             ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -16,6 +16,7 @@
 # include <sys/time.h>
 # include <string>
 # include <map>
+# include <set>
 
 class Server;
 class LocationConfig;
@@ -44,7 +45,7 @@ class Request {
   Request(Connection* connection, Server* server, std::string start_line);
   Request(const Request& r);
 
-  Request& operator=(const Request& request);
+  Request& operator=(const Request& ref);
 
   ~Request(void);
 
@@ -83,7 +84,7 @@ class Request {
   Server*                             m_server_;
   Connection*                         m_connection_;
   LocationConfig*                     m_location_;
-  ServerConfig*                        m_serverconfig_;
+  ServerConfig*                       m_serverconfig_;
   timeval                             m_start_at_;
   Phase                               m_phase_;
   Method                              m_method_;
