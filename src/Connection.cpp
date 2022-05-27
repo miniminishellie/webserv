@@ -6,7 +6,7 @@
 /*   By: plee <plee@student.42.fr>                  +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/25 21:44:42 by jihoolee          #+#    #+#             */
-/*   Updated: 2022/05/27 16:21:05 by plee             ###   ########.fr       */
+/*   Updated: 2022/05/27 19:15:22 by plee             ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -162,6 +162,7 @@ bool Connection::ParseHeader() {
     }
     AddHeader(line);
   }
+  return false;
 }
 
 bool Connection::IsRequestHasBody() {
@@ -182,10 +183,15 @@ int Connection::RecvBody(char *buf, int buf_size) {
     return 0;
   if ((read_size = recv(m_client_fd_, buf, buf_size, 0)) > 0)
     return read_size;
-  else if (read_size == -1)
-    std::cout << "IO error detected to read reqeust message without body for client " << std::endl;
-  else
-    std::cout <<"Connection close detected by client " << std::endl;
+  else if (read_size == -1) {
+    std::cout << "IO error detected to read reqeust message without body for client " << std::endl; // throw (Server::IOError((("IO error detected to read reqeust message without body for client ") + ft::to_string(connection.get_m_client_fd())).c_str()));
+    return -1;
+  }
+  else {
+    std::cout <<"Connection close detected by client " << std::endl; //throw (Server::IOError((("Connection close detected by client ") + ft::to_string(connection.get_m_client_fd())).c_str()));
+    return -1;
+  }
+
   // if ((read_size = read(fd, buf, BUFFER_SIZE)) > 0) {
   //   while(i < read_size) {
   //     if (buf[i] == '\r' && i + 3 < read_size && buf[i + 1] == '\n' && buf[i + 2] == '\r' && buf[i + 3] == '\n')
@@ -299,7 +305,7 @@ void Connection::RecvRequest(void) {
   if (phase == Request::READY && ParseStartLine())
     phase = Request::ON_HEADER;
   if (phase == Request::ON_HEADER && ParseHeader()) {
-    phase = Request::ON_BODY;
+    m_request_.set_m_phase(phase = Request::ON_BODY);
     if (!IsRequestHasBody())
       return ;
   }
@@ -311,26 +317,3 @@ void Connection::RecvRequest(void) {
     set_m_last_request_at();
   m_request_.set_m_phase(phase);
 }
-
-//bool Connection::RunRecvAndSolve() {
-  // try {
-  //   RecvRequest();
-  // } catch (int status_code) {
-  //   createResponse(connection, status_code);
-  //   return true;
-  // } catch (Server::IOError& e) {
-  //   throw (e);
-  // } catch (std::exception& e) {
-  //   ft::log(ServerManager::log_fd, std::string("[Failed][Request] Failed to create request because ") + e.what());
-  //   createResponse(connection, 50001);
-  //   return true;
-  // }
-  // const Request& request = connection.get_m_request();
-  // if (request.get_m_phase() == Request::COMPLETE) {
-  //   writeCreateNewRequestLog(request);
-  //   connection.set_m_status(Connection::ON_EXECUTE);
-  //   solveRequest(connection, connection.get_m_request());
-  //   return true;
-  // }
-  // return false;
-//}
