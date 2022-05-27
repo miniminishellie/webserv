@@ -6,7 +6,7 @@
 /*   By: plee <plee@student.42.fr>                  +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/21 15:39:29 by jihoolee          #+#    #+#             */
-/*   Updated: 2022/05/26 20:30:38 by plee             ###   ########.fr       */
+/*   Updated: 2022/05/27 15:31:50 by plee             ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -20,6 +20,7 @@
 class Server;
 class LocationConfig;
 class Connection;
+class ServerConfig;
 
 class Request {
  public:
@@ -82,6 +83,7 @@ class Request {
   Server*                             m_server_;
   Connection*                         m_connection_;
   LocationConfig*                     m_location_;
+  ServerConfig*                        m_serverconfig_;
   timeval                             m_start_at_;
   Phase                               m_phase_;
   Method                              m_method_;

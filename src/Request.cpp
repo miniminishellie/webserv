@@ -6,7 +6,7 @@
 /*   By: plee <plee@student.42.fr>                  +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/26 14:54:39 by jihoolee          #+#    #+#             */
-/*   Updated: 2022/05/26 20:39:57 by plee             ###   ########.fr       */
+/*   Updated: 2022/05/27 15:34:26 by plee             ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -26,7 +26,7 @@ Request::Request(void)
       m_protocol_(),
       m_headers_(),
       m_content_(),
-      m_content_length_().
+      m_content_length_(),
       m_special_header_count_(0),
       m_query_(),
       m_script_translated_(),
@@ -48,7 +48,7 @@ Request::Request(Connection* connection, Server* server, std::string start_line)
     std::cout << "StartLine TOKEN _NUM ERROR" << std::endl; //throw(40000)
   if (!ParseMethod(parsed[0]))
     std::cout << "StartLine METHOD ERROR" << std::endl; //throw(40001)
-  if (parsed[1].length() > REQUEST_URI_LIMIT_SIZE)
+  if (parsed[1].length() > m_serverconfig_->get_m_request_uri_size_limit())
     std::cout << "StartLine URI_LENGTH ERROR" << std::endl;//throw(41410)
   m_uri_ = parsed[1];
   m_uri_type_ = FILE;
@@ -125,7 +125,7 @@ bool Request::ParseMethod(std::string method) {
 }
 
 void Request::AddContent(std::string added_content) {
-  if (m_content_.size() + added_content.size() > LIMIT_CLIENT_BODY_SIZE)
+  if (m_content_.size() + added_content.size() > m_serverconfig_->get_m_client_body_size_limit())
     throw (41301);
   m_content_.append(added_content);
 }

@@ -6,7 +6,7 @@
 /*   By: plee <plee@student.42.fr>                  +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/25 21:44:42 by jihoolee          #+#    #+#             */
-/*   Updated: 2022/05/26 20:39:54 by plee             ###   ########.fr       */
+/*   Updated: 2022/05/27 15:43:27 by plee             ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -40,12 +40,19 @@ Connection::~Connection(void) {}
 
 Connection::Status Connection::get_m_status() const { return m_status_; }
 int Connection::get_m_client_fd() const { return m_client_fd_; }
-timeval& Connection::get_m_last_request_at() const { return m_last_request_at_; }
+timeval Connection::get_m_last_request_at() const { return m_last_request_at_; }
 std::string Connection::get_m_client_ip() const { return m_client_ip_; }
 int Connection::get_m_client_port() const { return m_client_port_; }
 int Connection::get_m_readed_size() const { return m_readed_size_; }
 std::string Connection::get_m_read_buffer_client() const { return m_read_buffer_client_; }
 const Request& Connection::get_m_request() const { return m_request_; }
+
+void Connection::set_m_status(Status status) { m_status_ = status; }
+void Connection::set_m_client_fd(int fd) { m_client_fd_ = fd; }
+void Connection::set_m_client_ip(std::string ip) { m_client_ip_ = ip; }
+void Connection::set_m_client_port(int port) { m_client_port_ = port; }
+void Connection::set_m_readed_size(int size) { m_readed_size_ = size; }
+void Connection::set_m_read_buffer_client(std::string read_buffer) { m_read_buffer_client_ = read_buffer; }
 
 bool Connection::ParseStartLine() {
   size_t new_line;
@@ -56,7 +63,7 @@ bool Connection::ParseStartLine() {
     m_request_ = Request(this, m_server_, start_line);
     return true;
   }
-  else if (m_read_buffer_client_.size() > REQUEST_URI_LIMIT_SIZE_MAX)
+  else if (m_read_buffer_client_.size() > m_serverconfig_.get_m_request_uri_size_limit())
     std::cout << "URI SIZE ERROR" << std::endl;
   return false;
 }
@@ -84,7 +91,7 @@ int Connection::RecvWithoutBody(char *buf, int buf_size) {
 }
 
 bool Connection::IsValidHeader(std::string header) {
-  if (header.size() > REQUEST_HEADER_LIMIT_SIZE) { //m_server->get_m_request_header_limit_size()
+  if (header.size() > m_serverconfig_.get_m_request_header_size_limit()) { //m_server->get_m_request_header_limit_size()
     std::cout << "Error: Header Size is over than limit size" << std::endl;
     return false; //throw 40005
   }
@@ -109,7 +116,7 @@ void Connection::AddHeader(std::string header) {
     m_request_.set_m_transfer_type(Request::CHUNKED);
   if (key == "Content-Length") {
     m_request_.set_m_content_length(ft::stoi(value));
-    if (m_request_.get_m_content_length() > LIMIT_CLIENT_BODY_SIZE)
+    if (m_request_.get_m_content_length() > m_serverconfig_.get_m_client_body_size_limit())
      std::cout << "Content length header value is over than body limit size" << std::endl;
     if (m_request_.get_m_content_length() < 0)
       std::cout << "Content-Length header value is less than 0" << std::endl;
@@ -140,7 +147,7 @@ bool Connection::ParseHeader() {
   //   return false;
   // }
   // return true;
-  while(ft::getLine(read_buf, line, REQUEST_HEADER_LIMIT_SIZE_MAX) >= 0) {
+  while(ft::getLine(read_buf, line, m_serverconfig_.get_m_request_header_size_limit()) >= 0) {
     if (line == "") {
       if (!ft::hasKey(m_request_.get_m_headers(), "Host")) {
         std::cout << "Error: Header is not Valid" << std::endl; //throw 40010
@@ -275,6 +282,9 @@ void Connection::set_m_last_request_at() {
 	this->m_last_request_at_ = now;
 	return ;
 }
+void Connection::addReadbufferClient(const char* str, int size) {
+  m_read_buffer_client_.append(str, size);
+}
 
 void Connection::RecvRequest(void) {
   char buf[BUFFER_SIZE];
@@ -299,4 +309,27 @@ void Connection::RecvRequest(void) {
   if (phase == Request::COMPLETE)
     set_m_last_request_at();
   m_request_.set_m_phase(phase);
+}
+
+bool Connection::RunRecvAndSolve() {
+  try {
+    RecvRequest();
+  } catch (int status_code) {
+    createResponse(connection, status_code);
+    return true;
+  } catch (Server::IOError& e) {
+    throw (e);
+  } catch (std::exception& e) {
+    ft::log(ServerManager::log_fd, std::string("[Failed][Request] Failed to create request because ") + e.what());
+    createResponse(connection, 50001);
+    return true;
+  }
+  const Request& request = connection.get_m_request();
+  if (request.get_m_phase() == Request::COMPLETE) {
+    writeCreateNewRequestLog(request);
+    connection.set_m_status(Connection::ON_EXECUTE);
+    solveRequest(connection, connection.get_m_request());
+    return true;
+  }
+  return false;
 }
