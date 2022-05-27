@@ -6,7 +6,7 @@
 /*   By: plee <plee@student.42.fr>                  +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/25 21:44:42 by jihoolee          #+#    #+#             */
-/*   Updated: 2022/05/27 19:15:22 by plee             ###   ########.fr       */
+/*   Updated: 2022/05/27 20:03:03 by plee             ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -316,4 +316,31 @@ void Connection::RecvRequest(void) {
   if (phase == Request::COMPLETE)
     set_m_last_request_at();
   m_request_.set_m_phase(phase);
+}
+
+void Connection::CreateResponse(int status, headers_t headers, std::string body) {
+  
+}
+
+bool Connection::RunRecvAndSolve() {
+  try {
+    RecvRequest();
+  } catch (int status_code) {
+    CreateResponse(status_code);
+    return true;
+  // } catch (Server::IOError& e) {
+  //   throw (e);
+  // } catch (std::exception& e) {
+  //   ft::log(ServerManager::log_fd, std::string("[Failed][Request] Failed to create request because ") + e.what());
+  //   createResponse(connection, 50001);
+  //   return true;
+  // }
+  // const Request& request = connection.get_m_request();
+  // if (request.get_m_phase() == Request::COMPLETE) {
+  //   writeCreateNewRequestLog(request);
+  //   connection.set_m_status(Connection::ON_EXECUTE);
+  //   solveRequest(connection, connection.get_m_request());
+  //   return true;
+  // }
+  return false;
 }

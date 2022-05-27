@@ -6,7 +6,7 @@
 /*   By: plee <plee@student.42.fr>                  +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/18 21:23:44 by jihoolee          #+#    #+#             */
-/*   Updated: 2022/05/27 15:39:56 by plee             ###   ########.fr       */
+/*   Updated: 2022/05/27 19:41:18 by plee             ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -23,6 +23,8 @@
 # include "ServerConfig.hpp"
 
 # define BUFFER_SIZE 65536
+
+typedef std::vector<std::string> headers_t;
 
 class Connection {
  public:
@@ -50,7 +52,8 @@ class Connection {
   int   getChunkedSize(std::string& str, std::string& len);
   bool  ReadGeneralBody();
   bool  ReadChunkedBody();
-  void  set_m_last_request_at();
+  void  CreateResponse(int status, headers_t headers = headers_t(), std::string body = "");
+  
 
   /* getter function*/
   Status      get_m_status() const;
@@ -66,6 +69,7 @@ class Connection {
   /* setter function*/
   void set_m_status(Status status);
   void set_m_client_fd(int fd);
+  void  set_m_last_request_at();
   void set_m_client_ip(std::string ip);
   void set_m_client_port(int port);
 
