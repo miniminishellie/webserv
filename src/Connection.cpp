@@ -6,11 +6,12 @@
 /*   By: plee <plee@student.42.fr>                  +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/25 21:44:42 by jihoolee          #+#    #+#             */
-/*   Updated: 2022/05/27 20:03:03 by plee             ###   ########.fr       */
+/*   Updated: 2022/05/28 20:48:27 by plee             ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "Connection.hpp"
+#include "ServerManager.hpp"
 #include "Libft.hpp"
 
 Connection::Connection(void) {}
@@ -39,6 +40,7 @@ Connection &Connection::operator=(const Connection &operand) {
 
 Connection::~Connection(void) {}
 
+/*getter function*/
 Connection::Status Connection::get_m_status() const { return m_status_; }
 int Connection::get_m_client_fd() const { return m_client_fd_; }
 timeval Connection::get_m_last_request_at() const { return m_last_request_at_; }
@@ -48,6 +50,7 @@ int Connection::get_m_readed_size() const { return m_readed_size_; }
 std::string Connection::get_m_read_buffer_client() const { return m_read_buffer_client_; }
 const Request& Connection::get_m_request() const { return m_request_; }
 
+/*setter function*/
 void Connection::set_m_status(Status status) { m_status_ = status; }
 void Connection::set_m_client_fd(int fd) { m_client_fd_ = fd; }
 void Connection::set_m_client_ip(std::string ip) { m_client_ip_ = ip; }
@@ -55,6 +58,8 @@ void Connection::set_m_client_port(int port) { m_client_port_ = port; }
 void Connection::set_m_readed_size(int size) { m_readed_size_ = size; }
 void Connection::set_m_read_buffer_client(std::string read_buffer) { m_read_buffer_client_ = read_buffer; }
 
+
+/*member function*/
 bool Connection::ParseStartLine() {
   size_t new_line;
 
@@ -318,8 +323,148 @@ void Connection::RecvRequest(void) {
   m_request_.set_m_phase(phase);
 }
 
+void Connection::ReportCreateNewRequestLog(int status)
+{
+	std::string text = "[Failed][Request][Server:" + m_serverconfig_.get_m_server_name() + "][CIP:"
+	+ m_client_ip_ + "][CFD:" + ft::to_string(m_client_fd_) + "]["
+	+ ft::to_string(status) + "][" + Response::status[status] + "] Failed to create new Request.\n";
+	ft::log(ServerManager::log_fd, text);
+	return ;
+}
+
+std::string Connection::GetDateHeader() {
+  char buff[1024];
+  struct tm t;
+  timeval now;  
+
+  gettimeofday(&now, NULL);
+  ft::ConvertTimespecToTm(now.tv_sec, &t);
+  strftime(buff, sizeof(buff), "%a, %d %b %Y %X GMT", &t);
+  return "Last-Modified:" + std::string(buff);
+}
+
+std::string Connection::GetServerHeader(Server* server) {
+  return "Server:" + m_serverconfig_.get_m_server_name();
+}
+
+void Connection::CreateCGIResponse(int& status, headers_t& headers, std::string& body) {
+  status = 200;
+  headers_t headers_in_body = ft::splitStringByChar(ft::rtrimString(body.substr(0, body.find("\r\n\r\n")), "\r\n"));
+  std::string key, value;
+  for (headers_t::iterator it = headers_in_body.begin(); it != headers_in_body.end(); it++)
+  {
+    key = ft::trimString(it->substr(0, it->find(":")), " \t");
+    value = ft::trimString(it->substr(it->find(":") + 1), " \r\n\t");
+    std::cout << key << " : " << value << std::endl;
+    if (key == "Status" || key == "status")
+      status = ft::stoi(value);
+    else if (!key.empty() && !value.empty())
+      headers.push_back(key + ":" + value);
+	}
+	if (body.find("\r\n\r\n") != std::string::npos)
+		body = body.substr(body.find("\r\n\r\n") + 4);
+	else if (body.find("\n\n") != std::string::npos)
+		body = body.substr(body.find("\n\n") + 2);
+	else
+		body = "";
+	if (body.size() == 0)
+		return ;
+
+	headers.push_back("Transfer-Encoding:chunked");
+}
+
 void Connection::CreateResponse(int status, headers_t headers, std::string body) {
-  
+  if (status >= 40000) {
+    ReportCreateNewRequestLog(status);
+    status /= 100;
+  }
+
+  headers.push_back(GetDateHeader());
+  headers.push_back(GetServerHeader(m_server_));
+
+  if (status == CGI_SUCCESS_CODE)
+    CreateCGIResponse(status, headers, body);
+  if (status >= 400 && status <= 599) {
+    body = m_serverconfig_.get_m_default_error_page_path();
+    body.replace(body.find("#ERROR_CODE"), 11, ft::to_string(status));
+    body.replace(body.find("#ERROR_CODE"), 11, ft::to_string(status));
+    body.replace(body.find("#ERROR_DESCRIPTION"), 18, Response::status[status]);
+    body.replace(body.find("#ERROR_DESCRIPTION"), 18, Response::status[status]);
+    body.replace(body.find("#PORT"), 5, ft::to_string(m_serverconfig_.get_m_port()));
+  }
+  if (!ft::hasKey(ft::stringVectorToMap(headers), "Transfer-Encoding"))
+    headers.push_back("Content-Length:" + ft::to_string(body.size()));
+  if (!body.empty())
+    headers.push_back("Content-Language:ko-KR");
+  if (status / 100 != 2)
+    headers.push_back("Connection:close");
+  if (status / 100 == 3)
+    headers.push_back("Location:/");
+  if (status == 504)
+    headers.push_back("Retry-After:3600");
+
+  Response& response = const_cast<Response&>(m_response_);
+  response = Response(this, status, body);
+  headers_t::iterator it = headers.begin();
+  for (; it != headers.end(); ++it) {
+    std::string key = ft::rtrimString((*it).substr(0, (*it).find(":")), " ");
+    std::string value = ft::ltrimString((*it).substr((*it).find(":") + 1), " ");
+    response.addHeader(key, value);
+  }
+  // writeCreateNewResponseLog(response);
+  const_cast<Request&>(m_request_).set_m_phase(Request::COMPLETE);
+  m_status_ = TO_SEND;
+  //m_manager->fdSet(response.get_m_connection()->get_m_client_fd(), ServerManager::WRITE_SET);
+}
+
+void Connection::SolveRequest(const Request& request)
+{
+  LocationConfig* locationconfig = request.get_m_locationconfig();
+  Request::Method method = request.get_m_method();
+  std::string methodString = request.get_m_method_to_string();
+
+  if (!ft::hasKey(locationconfig->get_m_allow_method(), methodString)) {
+    headers_t headers(1, "Allow:" + ft::containerToString(locationconfig->get_m_allow_method(), ", "));
+    return (CreateResponse(40501, headers));
+  }
+  // if (isAuthorizationRequired(location)) {
+  // 	if (!hasCredential(request)) {
+  // 		return (makeResponse401(this, request, connection));
+  // 	} else {
+  // 		std::vector<std::string> credential = ft::splitStringByChar(request.get_m_headers().find("Authorization")->second, ' ');
+  // 		if (!isValidCredentialForm(credential))
+  // 			return (CreateResponse(40022));
+  // 		else if (!isValidCredentialContent(location, credential))
+  // 			return (CreateResponse( 40301));
+  // 	}
+  // }
+  if (request.get_m_uri_type() == Request::DIRECTORY)
+    return (executeAutoindex(connection, request));
+  else if (request.get_m_uri_type() == Request::CGI)
+    return (executeCGI(connection, request));
+  else if (method == Request::GET)
+    executeGet(connection, request);
+  else if (method == Request::POST)
+    executePost(connection, request);
+  else if (method == Request::DELETE)
+    executeDelete(connection, request);
+  else
+    throw (400);
+}
+
+void Connection::WriteCreateNewRequestLog(const Request& request)
+{
+  if (request.get_m_method() != Request::POST)
+    return ;
+  int cfd = request.get_m_connection()->get_m_client_fd();
+  std::string text = ft::GetTimestamp() + "[Created][Request][Server:" + m_serverconfig_.get_m_server_name() + "]"
+  + "[CFD:" + ft::to_string(cfd) + "][Method:" \
+  + request.get_m_method_to_string() + "][URI:" + request.get_m_uri() + "]";
+  if (request.get_m_method() == Request::GET)
+    text.append("[Query:" + request.get_m_query() + "]");
+  text.append(" New request created.\n");
+  ft::log(ServerManager::log_fd, text);
+  return ;
 }
 
 bool Connection::RunRecvAndSolve() {
@@ -328,19 +473,19 @@ bool Connection::RunRecvAndSolve() {
   } catch (int status_code) {
     CreateResponse(status_code);
     return true;
-  // } catch (Server::IOError& e) {
-  //   throw (e);
-  // } catch (std::exception& e) {
-  //   ft::log(ServerManager::log_fd, std::string("[Failed][Request] Failed to create request because ") + e.what());
-  //   createResponse(connection, 50001);
-  //   return true;
-  // }
-  // const Request& request = connection.get_m_request();
-  // if (request.get_m_phase() == Request::COMPLETE) {
-  //   writeCreateNewRequestLog(request);
-  //   connection.set_m_status(Connection::ON_EXECUTE);
-  //   solveRequest(connection, connection.get_m_request());
-  //   return true;
-  // }
+  } catch (Server::IOError& e) {
+    throw (e);
+  } catch (std::exception& e) {
+    ft::log(ServerManager::log_fd, std::string("[Failed][Request] Failed to create request because ") + e.what());
+    CreateResponse(50001);
+    return true;
+  }
+  const Request& request = m_request_;
+  if (request.get_m_phase() == Request::COMPLETE) {
+    WriteCreateNewRequestLog(request);
+    m_status_ = ON_EXECUTE;
+    SolveRequest(m_request_);
+    return true;
+  }
   return false;
 }

@@ -6,7 +6,7 @@
 /*   By: plee <plee@student.42.fr>                  +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/20 22:17:14 by bylee             #+#    #+#             */
-/*   Updated: 2022/05/27 15:12:18 by plee             ###   ########.fr       */
+/*   Updated: 2022/05/28 17:36:55 by plee             ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -37,6 +37,7 @@
 
 class ServerManager {
  public:
+  static int log_fd;
   /*
   ServerManager constructor & destructor declaration
   */

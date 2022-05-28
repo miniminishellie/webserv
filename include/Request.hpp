@@ -6,7 +6,7 @@
 /*   By: plee <plee@student.42.fr>                  +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/21 15:39:29 by jihoolee          #+#    #+#             */
-/*   Updated: 2022/05/27 19:14:27 by plee             ###   ########.fr       */
+/*   Updated: 2022/05/28 19:57:47 by plee             ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -25,19 +25,8 @@ class ServerConfig;
 
 class Request {
  public:
-  enum Phase {
-    READY,
-    ON_HEADER,
-    ON_BODY,
-    COMPLETE
-  };
-  enum Method {
-    DEFAULT,
-    GET,
-    HEAD,
-    POST,
-    DELETE
-  };
+  enum Phase { READY, ON_HEADER, ON_BODY, COMPLETE };
+  enum Method { DEFAULT, GET, POST, DELETE };
   enum URIType { DIRECTORY, FILE, CGI };
   enum TransferType { GENERAL, CHUNKED };
 
@@ -49,25 +38,25 @@ class Request {
 
   ~Request(void);
 
-  bool ParseMethod(std::string method);
-  void AddContent(std::string added_content);
-  bool AssignLocationMatchingUri(std::string uri);
-  std::string ParseUri();
-  std::string GetTranslatedPath(std::string root, std::string uri);
-  std::string GetIndexPath(const std::set<std::string>& index_set, std::string base_path);
-
   /* getter function*/
-  //std::string get_without_body() const;
+  Connection *get_m_connection() const;
+	Server *get_m_server() const;
+	LocationConfig *get_m_locationconfig() const;
   Phase get_m_phase() const;
   Method get_m_method() const;
   URIType get_m_uri_type() const;
   TransferType get_m_transfer_type() const;
-  std::string get_m_uri() const;
-  std::string get_m_protocol() const;
-  std::map<std::string, std::string>& get_m_headers();
-  std::string get_m_content() const;
+  const std::string &get_m_uri() const;
+  const std::string &get_m_protocol() const;
+  const std::map<std::string, std::string>& get_m_headers();
+  const std::string &get_m_query() const;
+  const std::string &get_m_content() const;
   int get_m_content_length() const;
   timeval& get_m_start_at();
+  const std::string &get_m_path_translated() const;
+  const std::string &get_m_script_translated() const;
+  const std::string &get_m_path_info() const;
+	std::string get_m_method_to_string() const;
 
   /* setter function*/
   void set_m_phase(Phase phase);
@@ -79,11 +68,21 @@ class Request {
   void set_m_headers(std::map<std::string, std::string> headers);
   void set_m_content(std::string content);
   void set_m_content_length(int content_length);
+  bool ParseMethod(std::string method);
+  void AddContent(std::string added_content);
+  bool AssignLocationMatchingUri(std::string uri);
+  void clear();
+
+  /*member function*/
+  std::string ParseUri();
+  std::string GetTranslatedPath(std::string root, std::string uri);
+  std::string GetIndexPath(const std::set<std::string>& index_set, std::string base_path);
+
 
  private:
   Server*                             m_server_;
   Connection*                         m_connection_;
-  LocationConfig*                     m_location_;
+  LocationConfig*                     m_locationconfig_;
   ServerConfig*                       m_serverconfig_;
   timeval                             m_start_at_;
   Phase                               m_phase_;

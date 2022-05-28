@@ -6,7 +6,7 @@
 /*   By: plee <plee@student.42.fr>                  +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/21 15:11:56 by bylee             #+#    #+#             */
-/*   Updated: 2022/05/27 16:04:32 by plee             ###   ########.fr       */
+/*   Updated: 2022/05/28 19:46:16 by plee             ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -31,7 +31,13 @@ int   getLine(std::string& str, std::string &line, size_t buffer_size);
 int   getNewLine(std::string& data, std::string& line);
 bool  isFile(std::string path);
 bool  isDirectory(std::string path);
+void  log(int log_fd, std::string text);
+void  ConvertTimespecToTm(time_t s, struct tm* t);
+std::string	GetTimestamp(void);
 
+std::string                         itos(std::string number, size_t from, size_t to);
+long long int                       abs(long long int num);
+std::string                         to_string(long long int n);
 std::string                         ltrimString(const std::string& str,
                                                 const std::string& seps = " ");
 std::string                         rtrimString(const std::string& str,

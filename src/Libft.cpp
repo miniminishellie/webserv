@@ -6,7 +6,7 @@
 /*   By: plee <plee@student.42.fr>                  +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/21 15:14:43 by bylee             #+#    #+#             */
-/*   Updated: 2022/05/27 16:04:07 by plee             ###   ########.fr       */
+/*   Updated: 2022/05/28 19:46:22 by plee             ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -80,16 +80,16 @@ int getNewLine(std::string& data, std::string& line) {
     return 1;
 }
 
-  bool isFile(std::string path) {
-    struct stat buf;
-    stat(path.c_str(), &buf);
-    return S_ISREG(buf.st_mode);
+bool isFile(std::string path) {
+  struct stat buf;
+  stat(path.c_str(), &buf);
+  return S_ISREG(buf.st_mode);
 }
 
-  bool isDirectory(std::string path) {
-    struct stat buf;
-    stat(path.c_str(), &buf);
-    return S_ISDIR(buf.st_mode);
+bool isDirectory(std::string path) {
+  struct stat buf;
+  stat(path.c_str(), &buf);
+  return S_ISDIR(buf.st_mode);
 }
 
 std::string ltrimString(const std::string& str, const std::string& seps) {
@@ -202,5 +202,145 @@ std::vector<std::string> split(std::string s, char c) {
     result.push_back(s);
   return result;
 }
+
+void log(int log_fd, std::string text) {
+  if (log_fd != -1)
+    write(log_fd, text.c_str(), text.size());
+}
+
+long long int abs(long long int num) {
+  if (num < 0)
+    return num * -1;
+  return num;
+}
+
+std::string to_string(long long int n) {
+  long long int   nb;
+  std::string		str;
+
+  if (n == 0)
+    return "0";
+  nb = n;
+  while (nb != 0) {
+    str.insert(str.begin(), static_cast<char>((ft::abs(nb % 10) + 48)));
+    nb = nb / 10;
+  }
+  if (n < 0)
+    str.insert(str.begin(), '-');
+  return str;
+}
+
+template<typename T>
+void AddDevideResult(int& ret, T& data, int number) {
+  ret += data / number;
+  data %= number;
+}
+void MakeTime(struct tm* t) {
+  t->tm_mday++;
+  t->tm_year -= 1900;
+}
+
+void ConvertTimespecToTm(time_t s, struct tm* t) {
+  ft::bzero(t, sizeof(struct tm));
+  t->tm_gmtoff = 0;
+  t->tm_isdst = 0;
+  t->tm_zone = NULL;
+  t->tm_year = 1970;
+  t->tm_mon = 0;
+  long data = s + 32400;
+  if (data > 946684800) {
+   	t->tm_year = 2000;
+   	data -= 946684800;
+  }
+  ft::AddDevideResult(t->tm_yday, data, 86400);
+  ft::AddDevideResult(t->tm_hour, data, 3600);
+  ft::AddDevideResult(t->tm_min, data, 60);
+  t->tm_sec = data;
+
+  while (t->tm_yday > 365) {
+    if (t->tm_year % 4 == 0 && (t->tm_year % 100 != 0 || t->tm_year % 400 == 0)) {
+  	  if (t->tm_yday == 366)
+        break ;
+      t->tm_yday--;
+    }
+    t->tm_yday -= 365;
+    t->tm_year++;
+  }
+  int months[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+  bool leap = t->tm_year % 4 == 0 && (t->tm_year % 100 != 0 || t->tm_year % 400 == 0);
+  t->tm_mday = t->tm_yday;
+  while (t->tm_mday > months[t->tm_mon])
+  {
+    if (leap && t->tm_mon == 2) {
+      if (t->tm_mday == 28)
+        break ;
+      t->tm_mday--;
+    }
+    t->tm_mday -= months[t->tm_mon];
+    t->tm_mon++;
+  }
+  t->tm_wday = t->tm_mday % 7;
+  MakeTime(t);
+  return ;
+}
+
+std::string itos(std::string number, size_t from, size_t to) {
+  std::string base = "0123456789abcdefghijklmnopqrstuvwxyz";
+  std::string ret = "";
+  bool sign = false;
+  size_t data = ft::stoi(number, from);
+
+  if (number.empty() || data == 0)
+    return "0";
+  if (data < 0) {
+    data *= -1;
+    sign = true;
+  }
+  while (data > 0) {
+    ret.insert(ret.begin(), base[data % to]);
+    data /= to;
+  }
+  return ret; 
+}
+
+std::string	GetTimestamp(void) {
+  std::time_t	t = std::time(0);
+  std::tm* now = std::localtime(&t);
+  std::string ret;
+  std::string data;
+  ret.append("[" + ft::to_string(now->tm_year + 1900) + "_");
+  
+  data = ft::to_string(now->tm_mon + 1);
+  if (data.size() == 1)
+    ret.append("0" + data);
+  else
+    ret.append(data);
+
+  data = ft::to_string(now->tm_mday);
+  if (data.size() == 1)
+    ret.append("0" + data + "_");
+  else
+    ret.append(data + "_");
+
+  data = ft::to_string(now->tm_hour);
+  if (data.size() == 1)
+    ret.append("0" + data);
+  else
+    ret.append(data);
+
+  data = ft::to_string(now->tm_min);
+  if (data.size() == 1)
+    ret.append("0" + data + "_");
+  else
+    ret.append(data + "_");
+
+  data = ft::to_string(now->tm_sec);
+  if (data.size() == 1)
+    ret.append("0" + data + "]");
+  else
+    ret.append(data + "]");
+  return ret;
+}
+
 
 }  //  namespace ft
