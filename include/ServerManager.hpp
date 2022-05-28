@@ -6,7 +6,7 @@
 /*   By: jihoolee <jihoolee@student.42SEOUL.kr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/20 22:17:14 by bylee             #+#    #+#             */
-/*   Updated: 2022/05/27 19:29:21 by jihoolee         ###   ########.fr       */
+/*   Updated: 2022/05/28 19:23:17 by jihoolee         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -16,13 +16,18 @@
 # include <sys/time.h>
 # include <sys/event.h>
 # include <sys/types.h>
+# include <sys/socket.h>
+# include <netinet/in.h>
+# include <arpa/inet.h>
 # include <iostream>
 # include <map>
 # include <vector>
 # include <string>
 # include <exception>
 # include "WebservConfig.hpp"
-# include "Server.hpp"
+# include "ServerConfig.hpp"
+# include "Connection.hpp"
+// # include "Server.hpp"
 
 # define DEFAULT_CONFIG_PATH  "config/default.conf"
 # define PORT_HTTP 80
@@ -61,7 +66,7 @@ class ServerManager {
                     void* udata);
 
  private:
-  void  addServer_(const Server& s);
+  void  addServer_(ServerConfig new_server);
   void  changeSignal_(int sig);
   void  changeEvents_(std::vector<struct kevent>& change_list,
                       uintptr_t ident,
@@ -81,11 +86,13 @@ class ServerManager {
 
   bool                        m_is_running_;
   WebservConfig               m_config_;
-  std::map<int, Server>       m_servers_;
-  // std::vector<Server>         m_servers_;
+  std::map<int, ServerConfig> m_server_configs_;
+  std::map<int, Connection>   m_connections_;
+//   std::map<int, Server>       m_servers_;
+//   std::vector<Server>         m_servers_;
 
   int                         m_kqueue_;
-  std::map<int, FdType>       m_fd_set_;
+  std::map<int, FdType>       m_fd_set_;  //  ->필요한지 한번 생각해보자
   struct kevent               m_returned_events_[1024];
   std::vector<struct kevent>  m_change_list_;
 };  // class ServerManager

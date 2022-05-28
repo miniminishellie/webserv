@@ -6,7 +6,7 @@
 /*   By: jihoolee <jihoolee@student.42SEOUL.kr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/17 18:42:34 by jihoolee          #+#    #+#             */
-/*   Updated: 2022/05/27 20:07:50 by jihoolee         ###   ########.fr       */
+/*   Updated: 2022/05/28 19:40:50 by jihoolee         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -16,7 +16,8 @@
 ServerManager::ServerManager(void)
     : m_is_running_(false),
       m_config_(),
-      m_servers_(),
+      m_server_configs_(),
+      m_connections_(),
       m_kqueue_(-1),
       m_fd_set_(),
       m_change_list_() {
@@ -26,7 +27,8 @@ ServerManager::ServerManager(void)
 ServerManager::ServerManager(const ServerManager& ref)
     : m_is_running_(ref.m_is_running_),
       m_config_(ref.m_config_),
-      m_servers_(ref.m_servers_),
+      m_server_configs_(ref.m_server_configs_),
+      m_connections_(ref.m_connections_),
       m_kqueue_(ref.m_kqueue_),
       m_fd_set_(),
       m_change_list_(ref.m_change_list_) {
@@ -36,7 +38,8 @@ ServerManager::ServerManager(const ServerManager& ref)
 
 ServerManager::~ServerManager(void) {
   m_is_running_ = false;
-  m_servers_.clear();
+  m_server_configs_.clear();
+  m_connections_.clear();
   m_kqueue_ = -1;
   m_fd_set_.clear();
   m_change_list_.clear();
@@ -47,7 +50,8 @@ ServerManager& ServerManager::operator=(const ServerManager& ref) {
     return *this;
   m_is_running_ = ref.m_is_running_;
   m_config_ = ref.m_config_;
-  m_servers_ = ref.m_servers_;
+  m_server_configs_ = ref.m_server_configs_;
+  m_connections_ = ref.m_connections_;
   m_kqueue_ = ref.m_kqueue_;
   m_fd_set_ = ref.m_fd_set_;
   memcpy(m_returned_events_, ref.m_returned_events_,
@@ -80,13 +84,9 @@ void  ServerManager::createServers(const std::string& config_file_path, char* en
       if (!isValidLocationBlock_(location_blocks[j])) // location_blocks 유효성 검사
         throw std::invalid_argument("Location block is not valid");
     }
-    Server new_server =
-        Server(this, &this->m_config_, server_block, location_blocks);
-
+    ServerConfig new_server =
+        ServerConfig(&this->m_config_, server_block, location_blocks);
     addServer_(new_server);
-    changeEvents_(m_change_list_, new_server.get_m_socket_fd(), EVFILT_READ,
-                  EV_ADD | EV_ENABLE, 0, 0, NULL);\
-    insertFd(new_server.get_m_socket_fd(), FD_SERVER);
     // std::cout << Server(this, &this->m_config_, server_block, location_blocks);
   }
 }
@@ -158,9 +158,31 @@ void ServerManager::addEvent(uintptr_t ident,
   changeEvents_(m_change_list_, ident, filter, flags, fflags, data, udata);
 }
 
-void ServerManager::addServer_(const Server& s) {
-  if (m_servers_.count(s.get_m_socket_fd()) == 0)
-    m_servers_[s.get_m_socket_fd()] = s;
+void ServerManager::addServer_(ServerConfig new_server) {
+  int server_socket_fd;
+
+  if ((server_socket_fd = socket(PF_INET, SOCK_STREAM, 0)) == -1)
+    throw std::runtime_error("socket() Error");
+
+  int opt = 1;
+  struct sockaddr_in serv_addr;
+
+  setsockopt(server_socket_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
+  memset(&serv_addr, 0, sizeof(serv_addr));
+  serv_addr.sin_family = AF_INET;
+  serv_addr.sin_addr.s_addr = inet_addr(new_server.get_m_host().c_str());
+  serv_addr.sin_port = htons(new_server.get_m_port());
+  if (bind(server_socket_fd,
+            reinterpret_cast<struct sockaddr*>(&serv_addr),
+            sizeof(serv_addr)) == -1)
+    throw std::runtime_error("bind() Error");
+  if (listen(server_socket_fd, 256) == -1)  //  backlog 크기는 나중에 테스트 후 수정
+    throw std::runtime_error("listen() Error");
+  if (fcntl(server_socket_fd, F_SETFL, O_NONBLOCK) == -1)
+    throw std::runtime_error("fcntl() Error");
+  changeEvents_(m_change_list_, server_socket_fd, EVFILT_READ,
+                  EV_ADD | EV_ENABLE, 0, 0, NULL);
+  insertFd(server_socket_fd, FD_SERVER);
 }
 
 void ServerManager::changeSignal_(int sig) {

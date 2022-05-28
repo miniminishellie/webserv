@@ -6,7 +6,7 @@
 /*   By: jihoolee <jihoolee@student.42SEOUL.kr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/18 21:23:44 by jihoolee          #+#    #+#             */
-/*   Updated: 2022/05/27 16:53:32 by jihoolee         ###   ########.fr       */
+/*   Updated: 2022/05/28 20:07:34 by jihoolee         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -19,6 +19,8 @@
 # include <map>
 # include <string>
 # include "Request.hpp"
+
+class ServerManager;
 
 class Connection {
  public:
@@ -36,14 +38,15 @@ class Connection {
   void RecvRequest(void);
 
  private:
-  Status      m_status_;
-  int         m_client_fd_;
-  timeval     m_last_request_at_;
-  std::string m_client_ip_;
-  int         m_client_port_;
+  ServerManager*  m_server_manager_;
+  Status          m_status_;
+  int             m_client_fd_;
+  timeval         m_last_request_at_;
+  std::string     m_client_ip_;
+  int             m_client_port_;
 
-  int         m_readed_size_;
-  std::string m_read_buffer_client_;
-  Request     m_request_;
+  int             m_readed_size_;
+  std::string     m_read_buffer_client_;
+  Request         m_request_;
 };
 #endif
