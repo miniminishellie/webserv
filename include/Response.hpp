@@ -6,7 +6,7 @@
 /*   By: plee <plee@student.42.fr>                  +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/21 15:40:04 by jihoolee          #+#    #+#             */
-/*   Updated: 2022/05/28 19:33:37 by plee             ###   ########.fr       */
+/*   Updated: 2022/05/30 21:21:33 by plee             ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,6 +14,7 @@
 # define RESPONSE_HPP_
 
 # include <map>
+# include <string>
 
 class Connection;
 
@@ -42,7 +43,7 @@ class Response {
   std::string get_m_content() const;
   Phase get_m_phase() const;
 
-  /* setter function*/
+  /* setter function */
   void addHeader(std::string header_key, std::string header_value);
   void addContent(const std::string& body);
   void set_m_status_code(int status_code);
@@ -50,7 +51,7 @@ class Response {
   void set_m_phase(Phase phase);
   void clear();
 
-  /*member function*/
+  /* member function */
   std::string GetString() const;
 
  private:

@@ -6,7 +6,7 @@
 /*   By: plee <plee@student.42.fr>                  +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/28 15:27:34 by plee              #+#    #+#             */
-/*   Updated: 2022/05/28 19:35:43 by plee             ###   ########.fr       */
+/*   Updated: 2022/05/30 20:46:23 by plee             ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -101,10 +101,8 @@ std::map<int, std::string> make_status () {
 
   status_map[50001] = "Internal Server Error: recvRequest function throw std::exception";
   status_map[50002] = "Internal Server Error: MakeAutoindex function failed";
-  status_map[50003] = "Internal Server Error: in PUT method, failed to create or open file";
-  status_map[50004] = "Internal Server Error: in PUT method, failed to write content";
-  status_map[50005] = "Internal Server Error: createCGIEnv function return NULL";
-  status_map[50006] = "Internal Server Error: Failed to fork process for executeCGI";
+  status_map[50003] = "Internal Server Error: createCGIEnv function return NULL";
+  status_map[50004] = "Internal Server Error: Failed to fork process for executeCGI";
   status_map[50301] = "Internal Server Error: Too many Stacked Response exists";
   status_map[50401] = "Gateway Timeout";
   status_map[50501] = "HTTP Version Not Supported";
@@ -195,40 +193,38 @@ void Response::clear() {
 
 /*member function*/
 std::string Response::GetString() const {	
-	std::string message;
-	std::map<std::string, std::string>::const_iterator it = this->m_headers_.begin();
+  std::string message;
+  std::map<std::string, std::string>::const_iterator it = this->m_headers_.begin();
 
-	message = "HTTP/1.1 " + ft::to_string(this->m_status_code_) + " " + this->m_status_description_ + "\r\n";
-	for (; it != this->m_headers_.end(); ++it)
-		message += it->first + ": " + it->second + "\r\n";
-	if (m_connection_type_ == CLOSE || m_status_code_ < 200 || m_status_code_ > 299)
-		message += "Connection: close\r\n";
-	else
-		message += "Connection: Keep-Alive\r\n";
-	if (m_transfer_type_ == CHUNKED) {
-		message += "Transfer-Encoding: chunked\r\n\r\n";
-		int size = this->m_content_.size();
-		int count;
-		std::string data = m_content_;
-		int added = 0;
-		while (size > 0)
-		{
-			if (size > BUFFER_SIZE)
-				count = BUFFER_SIZE;
-			else
-				count = size;
-			message += ft::itos(ft::to_string(count), 10, 16) + "\r\n";
-			message += data.substr(added, count) + "\r\n";
-			size -= count;
-			added += count;
-		}
-		data.clear();
-		message += "0\r\n\r\n";
-	}
-	else
-	{
-		message += "\r\n";
-		message += this->m_content_;
-	}
-	return (message);
+  message = "HTTP/1.1 " + ft::to_string(this->m_status_code_) + " " + this->m_status_description_ + "\r\n";
+  for (; it != this->m_headers_.end(); ++it)
+    message += it->first + ": " + it->second + "\r\n";
+  if (m_connection_type_ == CLOSE || m_status_code_ < 200 || m_status_code_ > 299)
+    message += "Connection: close\r\n";
+  else
+    message += "Connection: Keep-Alive\r\n";
+  if (m_transfer_type_ == CHUNKED) {
+    message += "Transfer-Encoding: chunked\r\n\r\n";
+    int size = this->m_content_.size();
+    int count;
+    std::string data = m_content_;
+    int added = 0;
+    while (size > 0) {
+      if (size > BUFFER_SIZE)
+        count = BUFFER_SIZE;
+      else
+        count = size;
+      message += ft::itos(ft::to_string(count), 10, 16) + "\r\n";
+      message += data.substr(added, count) + "\r\n";
+      size -= count;
+      added += count;
+    }
+    data.clear();
+    message += "0\r\n\r\n";
+  }
+  else {
+    message += "\r\n";
+    message += this->m_content_;
+  }
+  return message;
 }

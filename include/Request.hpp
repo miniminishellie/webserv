@@ -6,7 +6,7 @@
 /*   By: plee <plee@student.42.fr>                  +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/21 15:39:29 by jihoolee          #+#    #+#             */
-/*   Updated: 2022/05/28 19:57:47 by plee             ###   ########.fr       */
+/*   Updated: 2022/05/30 21:14:51 by plee             ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -31,14 +31,14 @@ class Request {
   enum TransferType { GENERAL, CHUNKED };
 
   Request(void);
-  Request(Connection* connection, Server* server, std::string start_line);
+  Request(Connection* connection, ServerConfig* serverconfig, std::string start_line);
   Request(const Request& r);
 
   Request& operator=(const Request& ref);
 
   ~Request(void);
 
-  /* getter function*/
+  /* getter function */
   Connection *get_m_connection() const;
 	Server *get_m_server() const;
 	LocationConfig *get_m_locationconfig() const;
@@ -48,7 +48,7 @@ class Request {
   TransferType get_m_transfer_type() const;
   const std::string &get_m_uri() const;
   const std::string &get_m_protocol() const;
-  const std::map<std::string, std::string>& get_m_headers();
+  const std::map<std::string, std::string>& get_m_headers() const;
   const std::string &get_m_query() const;
   const std::string &get_m_content() const;
   int get_m_content_length() const;
@@ -58,7 +58,7 @@ class Request {
   const std::string &get_m_path_info() const;
 	std::string get_m_method_to_string() const;
 
-  /* setter function*/
+  /* setter function */
   void set_m_phase(Phase phase);
   void set_m_method(Method method);
   void set_m_uri_type(URIType uritype);
@@ -73,10 +73,11 @@ class Request {
   bool AssignLocationMatchingUri(std::string uri);
   void clear();
 
-  /*member function*/
+  /* member function */
   std::string ParseUri();
   std::string GetTranslatedPath(std::string root, std::string uri);
   std::string GetIndexPath(const std::set<std::string>& index_set, std::string base_path);
+  void AddHeader(std::string header);
 
 
  private:

@@ -6,7 +6,7 @@
 /*   By: plee <plee@student.42.fr>                  +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/21 15:11:56 by bylee             #+#    #+#             */
-/*   Updated: 2022/05/28 19:46:16 by plee             ###   ########.fr       */
+/*   Updated: 2022/05/30 19:57:54 by plee             ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -24,16 +24,24 @@
 
 namespace ft {
 void  bzero(void *data, size_t len);
+void  *memcpy(void *dest, const void *src, size_t len);
 void  strjoin(std::string& str, const std::string& buf, size_t n);
+char  *strsjoin(std::string s1 = "", std::string s2 = "", std::string s3 = "", std::string s4 = "", std::string s5 = "");
 void  str_index_join(std::string& str, const std::string& buf, size_t i);
 int   stoi(std::string str, size_t base = 10);
+char  *strdup(const char *s);
 int   getLine(std::string& str, std::string &line, size_t buffer_size);
 int   getNewLine(std::string& data, std::string& line);
 bool  isFile(std::string path);
 bool  isDirectory(std::string path);
 void  log(int log_fd, std::string text);
-void  ConvertTimespecToTm(time_t s, struct tm* t);
-std::string	GetTimestamp(void);
+void  convertTimespecToTm(time_t s, struct tm* t);
+int   lenDoubleStr(char **str);
+int   free(void *ptr);
+int   freeStr(char **str);
+int   freeDoublestr(char ***doublestr_addr);
+std::string	getTimestamp(void);
+
 
 std::string                         itos(std::string number, size_t from, size_t to);
 long long int                       abs(long long int num);
@@ -47,6 +55,7 @@ std::string                         trimString(const std::string& str,
 std::string                         getStringFromFile(
                                       const std::string& file_path,
                                       int max_size = -1);
+std::string                         getStringFromFd(int fd, int max_size = -1);
 std::vector<std::string>            splitStringByChar(std::string str,
                                                       char c = '\n');
 std::map<std::string, std::string>  stringVectorToMap(

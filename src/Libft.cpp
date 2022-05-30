@@ -6,7 +6,7 @@
 /*   By: plee <plee@student.42.fr>                  +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/21 15:14:43 by bylee             #+#    #+#             */
-/*   Updated: 2022/05/28 19:46:22 by plee             ###   ########.fr       */
+/*   Updated: 2022/05/30 19:57:55 by plee             ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -47,6 +47,15 @@ void bzero(void *data, size_t len) {
     str[--len] = 0;
 }
 
+void *memcpy(void *dest, const void *src, size_t len) {
+  char *d = reinterpret_cast<char *>(dest);
+  const char *s = reinterpret_cast<const char *>(src);
+
+  while (len--)
+    *d++ = *s++;
+  return (dest);
+}
+
 void strjoin(std::string& str, const std::string& buf, size_t n) {
   str.append(buf.c_str(), n);
 }
@@ -54,6 +63,15 @@ void strjoin(std::string& str, const std::string& buf, size_t n) {
 void str_index_join(std::string& str, const std::string& buf, size_t i) {
   str.append(buf.c_str());
   str = str.substr(i);
+}
+
+char * strdup(const char *s) {
+  size_t len = strlen(s) + 1;
+  void *str = malloc(len);
+
+  if (str == NULL)
+    return NULL;
+  return (reinterpret_cast<char *>(ft::memcpy(str, s, len)));
 }
 
 int getLine(std::string& str, std::string &line, size_t buffer_size) {
@@ -141,6 +159,20 @@ std::string getStringFromFile(const std::string& file_path, int max_size) {
   return (result);
 }
 
+std::string getStringFromFd(int fd, int max_size) {
+  int read_cnt = 0;
+  char buff[1024];
+  std::string ret;
+
+  while ((read_cnt = read(fd, buff, 1024)) > 0) {
+    ret.append(buff, read_cnt);
+    if (max_size != -1 && static_cast<int>(ret.size()) > max_size)
+      throw (std::overflow_error("overflow max_size in getStringFromFile"));
+  }
+  close(fd);
+  return (ret);
+}
+
 std::vector<std::string> splitStringByChar(std::string str, char c) {
   std::vector<std::string> result;
   size_t pos = 0;
@@ -200,7 +232,7 @@ std::vector<std::string> split(std::string s, char c) {
   }
   if (s.length() != 0)
     result.push_back(s);
-  return result;
+  return (result);
 }
 
 void log(int log_fd, std::string text) {
@@ -211,7 +243,7 @@ void log(int log_fd, std::string text) {
 long long int abs(long long int num) {
   if (num < 0)
     return num * -1;
-  return num;
+  return (num);
 }
 
 std::string to_string(long long int n) {
@@ -219,7 +251,7 @@ std::string to_string(long long int n) {
   std::string		str;
 
   if (n == 0)
-    return "0";
+    return ("0");
   nb = n;
   while (nb != 0) {
     str.insert(str.begin(), static_cast<char>((ft::abs(nb % 10) + 48)));
@@ -227,7 +259,7 @@ std::string to_string(long long int n) {
   }
   if (n < 0)
     str.insert(str.begin(), '-');
-  return str;
+  return (str);
 }
 
 template<typename T>
@@ -240,7 +272,7 @@ void MakeTime(struct tm* t) {
   t->tm_year -= 1900;
 }
 
-void ConvertTimespecToTm(time_t s, struct tm* t) {
+void convertTimespecToTm(time_t s, struct tm* t) {
   ft::bzero(t, sizeof(struct tm));
   t->tm_gmtoff = 0;
   t->tm_isdst = 0;
@@ -300,10 +332,10 @@ std::string itos(std::string number, size_t from, size_t to) {
     ret.insert(ret.begin(), base[data % to]);
     data /= to;
   }
-  return ret; 
+  return (ret); 
 }
 
-std::string	GetTimestamp(void) {
+std::string	getTimestamp(void) {
   std::time_t	t = std::time(0);
   std::tm* now = std::localtime(&t);
   std::string ret;
@@ -339,7 +371,55 @@ std::string	GetTimestamp(void) {
     ret.append("0" + data + "]");
   else
     ret.append(data + "]");
-  return ret;
+  return (ret);
+}
+
+char *strsjoin(std::string s1, std::string s2, std::string s3, std::string s4, std::string s5) {
+  s1.append(s2);
+  s1.append(s3);
+  s1.append(s4);
+  s1.append(s5);
+  return (strdup(s1.c_str()));
+}
+
+int lenDoubleStr(char **str) {
+  int		idx;
+
+  idx = 0;
+  if (!str || !(*str))
+    return (0);
+  while (*str++)
+    idx++;
+  return (idx);
+}
+
+int free(void *ptr) {
+  if (ptr)
+    std::free(ptr);
+  return (1);
+}
+
+int freeStr(char **str) {
+  if (!str || !(*str))
+    return (0);
+  ft::free(*str);
+  *str = 0;
+  return (1);
+}
+
+int freeDoublestr(char ***doublestr_addr) {
+  int i;
+  char  **doublestr;
+
+  if (!doublestr_addr || !(*doublestr_addr))
+    return (0);
+  i = -1;
+  doublestr = *doublestr_addr;
+  while (doublestr[++i])
+    ft::freeStr(&doublestr[i]);
+  ft::free(doublestr);
+  *doublestr_addr = 0;
+  return (1);
 }
 
 

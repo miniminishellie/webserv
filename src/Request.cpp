@@ -6,7 +6,7 @@
 /*   By: plee <plee@student.42.fr>                  +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/26 14:54:39 by jihoolee          #+#    #+#             */
-/*   Updated: 2022/05/28 19:57:39 by plee             ###   ########.fr       */
+/*   Updated: 2022/05/30 21:19:44 by plee             ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -16,7 +16,7 @@
 #include "Libft.hpp"
 
 Request::Request(void)
-    : m_server_(NULL),
+    : m_serverconfig_(NULL),
       m_connection_(NULL),
       m_phase_(READY),
       m_method_(DEFAULT),
@@ -36,9 +36,9 @@ Request::Request(void)
   m_start_at_.tv_usec = 0;
 }
 
-Request::Request(Connection* connection, Server* server, std::string start_line)
+Request::Request(Connection* connection, ServerConfig* serverconfig, std::string start_line)
     : m_connection_(connection),
-      m_server_(server),
+      m_serverconfig_(serverconfig),
       m_transfer_type_(GENERAL),
       m_phase_(ON_HEADER) {
   if (gettimeofday(&m_start_at_, NULL) == -1)
@@ -70,7 +70,7 @@ Request::Request(Connection* connection, Server* server, std::string start_line)
 }
 
 Request::Request(const Request &r)
-    : m_server_(r.m_server_),
+    : m_serverconfig_(r.m_serverconfig_),
       m_connection_(r.m_connection_),
       m_phase_(r.m_phase_),
       m_method_(r.m_method_),
@@ -91,7 +91,7 @@ Request &Request::operator=(const Request &ref)
 {
   if (this == &ref)
     return (*this);
-  m_server_ = ref.m_server_;
+  m_serverconfig_ = ref.m_serverconfig_;
   m_connection_ = ref.m_connection_;
   m_locationconfig_ = ref.m_locationconfig_;
   m_serverconfig_ = ref.m_serverconfig_;
@@ -110,7 +110,7 @@ Request &Request::operator=(const Request &ref)
   m_script_translated_ = ref.m_script_translated_;
   m_path_translated_ = ref.m_path_translated_;
   m_path_info_ = ref.m_path_info_;
-  return (*this);
+  return *this;
 }
 
 Request::~Request() {
@@ -124,7 +124,7 @@ Request::URIType Request::get_m_uri_type() const { return m_uri_type_; }
 Request::TransferType Request::get_m_transfer_type() const { return m_transfer_type_; }
 const std::string &Request::get_m_uri() const { return m_uri_; }
 const std::string &Request::get_m_protocol() const { return m_protocol_; }
-const std::map<std::string, std::string> &Request::get_m_headers() { return  m_headers_; }
+const std::map<std::string, std::string> &Request::get_m_headers() const { return  m_headers_; }
 const std::string		&Request::get_m_query() const { return (m_query_); }
 const std::string &Request::get_m_content() const { return m_content_; }
 int Request::get_m_content_length() const { return m_content_length_; }
@@ -165,6 +165,29 @@ bool Request::ParseMethod(std::string method) {
   return true;
 }
 
+void Request::AddHeader(std::string header) {
+  size_t pos = header.find(":");
+  std::string key = ft::trimString(header.substr(0, pos));
+  std::string value = ft::trimString(header.substr(pos + 1));
+
+  for (size_t i = 0 ; i < key.length() ; ++i)
+    key[i] = (i == 0 || key[i - 1] == '-') ? std::toupper(key[i]) : std::tolower(key[i]);
+  std::pair<std::map<std::string, std::string>::iterator, bool> result = m_headers_.insert(std::make_pair(key, value));
+  if (!result.second)
+    std::cout << "Error: Duplicate Header" << std::endl; // throw 40003
+  if (key == "Transfer-Encoding" && value.find("chunked") != std::string::npos)
+    m_transfer_type_ = Request::CHUNKED;
+  if (key == "Content-Length") {
+    m_content_length_ = ft::stoi(value);
+    if (m_content_length_ > m_serverconfig_->get_m_client_body_size_limit())
+      std::cout << "Content length header value is over than body limit size" << std::endl;//throw (41303);
+    if (m_content_length_ < 0)
+      std::cout << "Content-Length header value is less than 0" << std::endl; // throw(40004)
+  }
+  if (key[0] == 'X')
+    ++m_special_header_count_;
+}
+
 void Request::AddContent(std::string added_content) {
   if (m_content_.size() + added_content.size() > m_serverconfig_->get_m_client_body_size_limit())
     throw (41301);
@@ -174,7 +197,7 @@ void Request::AddContent(std::string added_content) {
 bool Request::AssignLocationMatchingUri(std::string uri)
 {
   size_t max_uri_match = 0;
-  for (std::vector<LocationConfig>::const_iterator it = m_server_->get_m_locations().begin() ; it != m_server_->get_m_locations().end() ; ++it) {
+  for (std::vector<LocationConfig>::const_iterator it = m_serverconfig_->get_m_locations().begin() ; it != m_serverconfig_->get_m_locations().end() ; ++it) {
     if (std::strncmp(it->get_m_uri().c_str(), uri.c_str(), it->get_m_uri().length()) == 0 && it->get_m_uri().length() > max_uri_match) {
       m_locationconfig_ = const_cast<LocationConfig *>(&(*it));
       max_uri_match = it->get_m_uri().length();
