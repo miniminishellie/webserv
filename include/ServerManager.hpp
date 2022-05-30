@@ -6,7 +6,7 @@
 /*   By: jihoolee <jihoolee@student.42SEOUL.kr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/20 22:17:14 by bylee             #+#    #+#             */
-/*   Updated: 2022/05/28 19:23:17 by jihoolee         ###   ########.fr       */
+/*   Updated: 2022/05/30 21:06:07 by jihoolee         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -75,6 +75,8 @@ class ServerManager {
                       uint32_t fflags,
                       intptr_t data,
                       void* udata);
+  bool  acceptNewConnection_(int server_socket_fd);
+
   bool  splitConfigString_(std::string& config_string,
           std::string& config_block,
           std::vector<std::string>& serveral_strings);
@@ -84,17 +86,18 @@ class ServerManager {
   bool isValidServerBlock_(std::string& server_block);
   bool isValidLocationBlock_(std::string& location_block);
 
-  bool                        m_is_running_;
-  WebservConfig               m_config_;
-  std::map<int, ServerConfig> m_server_configs_;
-  std::map<int, Connection>   m_connections_;
+  bool                                m_is_running_;
+  std::map<std::string, std::string>  m_mime_types_;
+  WebservConfig                       m_config_;
+  std::map<int, ServerConfig>         m_server_configs_;
+  std::map<int, Connection>           m_connections_;
 //   std::map<int, Server>       m_servers_;
 //   std::vector<Server>         m_servers_;
 
-  int                         m_kqueue_;
-  std::map<int, FdType>       m_fd_set_;  //  ->필요한지 한번 생각해보자
-  struct kevent               m_returned_events_[1024];
-  std::vector<struct kevent>  m_change_list_;
+  int                                 m_kqueue_;
+  std::map<int, FdType>               m_fd_set_;  //  ->필요한지 한번 생각해보자
+  struct kevent                       m_returned_events_[1024];
+  std::vector<struct kevent>          m_change_list_;
 };  // class ServerManager
 
 #endif  //  SERVER_MANGER_HPP_

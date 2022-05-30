@@ -6,7 +6,7 @@
 /*   By: jihoolee <jihoolee@student.42SEOUL.kr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/17 18:42:34 by jihoolee          #+#    #+#             */
-/*   Updated: 2022/05/28 19:40:50 by jihoolee         ###   ########.fr       */
+/*   Updated: 2022/05/30 20:09:42 by jihoolee         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -15,17 +15,20 @@
 
 ServerManager::ServerManager(void)
     : m_is_running_(false),
+      m_mime_types_(),
       m_config_(),
       m_server_configs_(),
       m_connections_(),
       m_kqueue_(-1),
       m_fd_set_(),
       m_change_list_() {
+  make_mime_type(m_mime_types_);
   memset(m_returned_events_, 0, sizeof(struct kevent) * 1024);
 }
 
 ServerManager::ServerManager(const ServerManager& ref)
     : m_is_running_(ref.m_is_running_),
+      m_mime_types_(ref.m_mime_types_),
       m_config_(ref.m_config_),
       m_server_configs_(ref.m_server_configs_),
       m_connections_(ref.m_connections_),
@@ -38,6 +41,7 @@ ServerManager::ServerManager(const ServerManager& ref)
 
 ServerManager::~ServerManager(void) {
   m_is_running_ = false;
+  m_mime_types_.clear();
   m_server_configs_.clear();
   m_connections_.clear();
   m_kqueue_ = -1;
@@ -49,6 +53,7 @@ ServerManager& ServerManager::operator=(const ServerManager& ref) {
   if (this == &ref)
     return *this;
   m_is_running_ = ref.m_is_running_;
+  m_mime_types_ = ref.m_mime_types_;
   m_config_ = ref.m_config_;
   m_server_configs_ = ref.m_server_configs_;
   m_connections_ = ref.m_connections_;
@@ -118,7 +123,7 @@ void ServerManager::runServers(void) {
       curr_event = &m_returned_events_[i];
       if (curr_event->flags & EV_ERROR)
         throw std::runtime_error("socket error in kevent");
-      else if (curr_event->flags & EVFILT_READ) {
+      else if (curr_event->filter == EVFILT_READ) {
         switch (m_fd_set_[curr_event->ident]) {
           case FD_SERVER: {
           // if (m_connections.size() >= (1024 / m_manager->get_m_servers().size())) {
@@ -127,7 +132,7 @@ void ServerManager::runServers(void) {
           //      return ;
           //    closeConnection(fd);
           // }
-            if (!m_servers_[curr_event->ident].acceptNewConnection()) {
+            if (!acceptNewConnection_(curr_event->ident)) {
               // std::cerr << "[Failed][Connection][Server:"
               //               + m_server_name + "][Host:" + m_host
 	            //               + "] Failed to create new connection.\n"
@@ -136,12 +141,24 @@ void ServerManager::runServers(void) {
             break;
           }
           case FD_CLIENT: {
+            Connection& connection_to_run = m_connections_[curr_event->ident];
 
-            break;
+            try {
+              connection_to_run.runRecvAndSolve();
+            } //catch(Server::IOError& e) {
+            //   ft::log(ServerManager::log_fd, ft::getTimestamp() + e.location() + std::string("\n"));
+            //   closeConnection(fd);
+            // } catch (...) {
+            //   ft::log(ServerManager::log_fd, ft::getTimestamp() + "detected some error" + std::string("\n"));
+            //   closeConnection(fd);
+            // }
+            catch(...){}
           }
         }
+      } else if (curr_event->filter == EVFILT_WRITE) {
       }
     }
+    usleep(5);
   }
 }
 
@@ -203,6 +220,34 @@ void ServerManager::changeEvents_(std::vector<struct kevent>& change_list,
   change_list.push_back(temp_event);
 }
 
+bool ServerManager::acceptNewConnection_(int server_socket_fd) {
+  struct sockaddr_in  client_addr;
+  socklen_t           client_addr_size = sizeof(struct sockaddr);
+  int                 client_fd;
+  std::string         client_ip;
+  int                 client_port;
+
+  bzero(&client_addr, client_addr_size);
+  if ((client_fd = accept(server_socket_fd,
+        (struct sockaddr*)&client_addr, &client_addr_size)) == -1) {
+    std::cerr << "accpt() function for client_fd failed" << std::endl;
+    return false;
+  }
+  if (fcntl(client_fd, F_SETFL, O_NONBLOCK) == -1)
+    return false;
+  // setsockopt(client_fd, SOL_SOCKET, SO_RCVTIMEO, (struct timeval*)&tv, sizeof(struct timeval));
+  // setsockopt(client_fd, SOL_SOCKET, SO_SNDTIMEO, (struct timeval*)&tv, sizeof(struct timeval));
+  addEvent(client_fd, EVFILT_READ, EV_ADD | EV_ENABLE,
+            0, 0, NULL);
+  addEvent(client_fd, EVFILT_WRITE, EV_ADD | EV_ENABLE,
+            0, 0, NULL);
+  client_ip = ft::inet_ntoa(client_addr.sin_addr.s_addr);
+  client_port = static_cast<int>(client_addr.sin_port);
+  m_connections_[client_fd] = Connection(client_fd, client_ip, client_port);
+  insertFd(client_fd, FD_CLIENT);
+  return true;
+}
+
 namespace {
 enum IncludeMode { INCLUDE_START, INCLUDE_END, INCLUDE_BOTH, INCLUDE_NOT };
 
@@ -244,6 +289,45 @@ std::vector<std::string> groupLineWithCondition(std::vector<std::string>& lines,
 bool isValidIpByte(std::string s) { return ((ft::stoi(s) >= 0) && (ft::stoi(s) <= 255)); }
 bool isValidCgi(std::string data) { return (data[0] == '.'); }
 bool isDigit(char c) { return (c >= '0' && c <= '9'); }
+
+void make_mime_type(std::map<std::string, std::string>& m_mime_types_) {
+	m_mime_types_["avi"] = "video/x-msvivdeo";
+	m_mime_types_["bin"] = "application/octet-stream";
+	m_mime_types_["bmp"] = "image/bmp";
+	m_mime_types_["css"] = "text/css";
+	m_mime_types_["csv"] = "text/csv";
+	m_mime_types_["doc"] = "application/msword";
+	m_mime_types_["docx"] = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+	m_mime_types_["gz"] = "application/gzip";
+	m_mime_types_["gif"] = "image/gif";
+	m_mime_types_["htm"] = "text/html";
+	m_mime_types_["html"] = "text/html";
+	m_mime_types_["ico"] = "image/vnd.microsoft.icon";
+	m_mime_types_["jepg"] = "image/jepg";
+	m_mime_types_["jpg"] = "image/jepg";
+	m_mime_types_["js"] = "text/javascript";
+	m_mime_types_["json"] = "application/json";
+	m_mime_types_["mp3"] = "audio/mpeg";
+	m_mime_types_["mpeg"] = "video/mpeg";
+	m_mime_types_["png"] = "image/png";
+	m_mime_types_["pdf"] = "apllication/pdf";
+	m_mime_types_["php"] = "application/x-httpd-php";
+	m_mime_types_["ppt"] = "application/vnd.ms-powerpoint";
+	m_mime_types_["pptx"] = "application/vnd.openxmlformats-officedocument.presentationml.presentation";
+	m_mime_types_["rar"] = "application/vnd.rar";
+	m_mime_types_["sh"] = "application/x-sh";
+	m_mime_types_["svg"] = "image/svg+xml";
+	m_mime_types_["tar"] = "application/x-tar";
+	m_mime_types_["tif"] = "image/tiff";
+	m_mime_types_["txt"] = "text/plain";
+	m_mime_types_["wav"] = "audio/wav";
+	m_mime_types_["xls"] = "application/xhtml+xml";
+	m_mime_types_["xlsx"] = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+	m_mime_types_["zip"] = "application/zip";
+	m_mime_types_["bad_extension"] = "application/bad";
+	m_mime_types_["bla"] = "application/42cgi";
+	m_mime_types_["pouic"] = "application/pouic";
+}
 }  //  anonymous namespace
 
 bool ServerManager::splitConfigString_(std::string& config_string, std::string& config_block,\
