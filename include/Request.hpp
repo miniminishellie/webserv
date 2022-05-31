@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Request.hpp                                        :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: plee <plee@student.42.fr>                  +#+  +:+       +#+        */
+/*   By: jihoolee <jihoolee@student.42SEOUL.kr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/21 15:39:29 by jihoolee          #+#    #+#             */
-/*   Updated: 2022/05/30 21:14:51 by plee             ###   ########.fr       */
+/*   Updated: 2022/05/31 20:01:04 by jihoolee         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -18,7 +18,6 @@
 # include <map>
 # include <set>
 
-class Server;
 class LocationConfig;
 class Connection;
 class ServerConfig;
@@ -40,7 +39,6 @@ class Request {
 
   /* getter function */
   Connection *get_m_connection() const;
-	Server *get_m_server() const;
 	LocationConfig *get_m_locationconfig() const;
   Phase get_m_phase() const;
   Method get_m_method() const;
@@ -81,10 +79,9 @@ class Request {
 
 
  private:
-  Server*                             m_server_;
   Connection*                         m_connection_;
   LocationConfig*                     m_locationconfig_;
-  ServerConfig*                       m_serverconfig_;
+  ServerConfig*                       m_server_config_;
   timeval                             m_start_at_;
   Phase                               m_phase_;
   Method                              m_method_;

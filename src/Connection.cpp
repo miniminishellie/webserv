@@ -3,19 +3,14 @@
 /*                                                        :::      ::::::::   */
 /*   Connection.cpp                                     :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: plee <plee@student.42.fr>                  +#+  +:+       +#+        */
+/*   By: jihoolee <jihoolee@student.42SEOUL.kr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/25 21:44:42 by jihoolee          #+#    #+#             */
-<<<<<<< HEAD
-/*   Updated: 2022/05/30 21:19:13 by plee             ###   ########.fr       */
-=======
-/*   Updated: 2022/05/28 20:08:20 by jihoolee         ###   ########.fr       */
->>>>>>> jihoolee
+/*   Updated: 2022/05/31 20:38:58 by jihoolee         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "Connection.hpp"
-#include "ServerManager.hpp"
 #include "ServerConfig.hpp"
 #include "WebservConfig.hpp"
 #include "Libft.hpp"
@@ -80,6 +75,7 @@ std::string Connection::GetExtension(std::string path) {
 std::string  Connection:: GetMimeTypeHeader(std::string path) {
   std::string extension = GetExtension(path);
   std::string ret;
+  std::map<std::string, std::string>  mime_types = m_webserv_config_->get_m_mime_types();
 
   if (!extension.empty() && ft::hasKey(mime_types, extension))
     ret = "Content-type:" + mime_types[extension];
@@ -117,7 +113,7 @@ int	Connection::SetEnv(char **env, int idx, std::string key, std::string val) {
 }
 
 char** Connection::DupBaseEnvWithExtraSpace(const Request& request) {
-  char **base_env = m_webservconfig_->get_m_base_env();
+  char **base_env = m_webserv_config_->get_m_base_env();
   char **cgi_env = NULL;
   int idx = 0;
   int base_len = ft::lenDoubleStr(base_env);
@@ -146,7 +142,7 @@ std::string Connection::GetCGIEnvValue(const Request& request, std::string token
     return std::string();
   }
   else if (token == "AUTH_TYPE")
-    return m_webservconfig_->get_m_cgi_version();
+    return m_webserv_config_->get_m_cgi_version();
   else if (token == "PATH_INFO")
     return request.get_m_path_info();
   else if (token == "PATH_TRANSLATED")
@@ -162,15 +158,15 @@ std::string Connection::GetCGIEnvValue(const Request& request, std::string token
   else if (token == "SCRIPT_NAME")
     return request.get_m_script_translated();
   else if (token == "SERVER_NAME")
-    return m_serverconfig_->get_m_server_name();
+    return m_server_config_->get_m_server_name();
   else if (token == "SERVER_PORT")
-    return ft::to_string(m_serverconfig_->get_m_port());
+    return ft::to_string(m_server_config_->get_m_port());
   else if (token == "SERVER_PROTOCOL")
-    return "HTTP/" + m_webservconfig_->get_m_http_version();
+    return "HTTP/" + m_webserv_config_->get_m_http_version();
   else if (token == "SERVER_SOFTWARE")
-    return m_webservconfig_->get_m_software_name() + "/" + m_webservconfig_->get_m_software_version();
+    return m_webserv_config_->get_m_software_name() + "/" + m_webserv_config_->get_m_software_version();
   else if (token == "GATEWAY_INTERFACE")
-    return m_webservconfig_->get_m_cgi_version();
+    return m_webserv_config_->get_m_cgi_version();
   return NULL;
 }
 
@@ -180,10 +176,10 @@ bool Connection::ParseStartLine() {
   if ((new_line = m_read_buffer_client_.find("\r\n")) != std::string::npos) {
     std::string start_line = m_read_buffer_client_.substr(0, new_line);
     m_read_buffer_client_ = m_read_buffer_client_.erase(0, new_line + 2);
-    m_request_ = Request(this, m_serverconfig_, start_line);
+    m_request_ = Request(this, m_server_config_, start_line);
     return true;
   }
-  else if (m_read_buffer_client_.size() > m_serverconfig_->get_m_request_uri_size_limit())
+  else if (m_read_buffer_client_.size() > m_server_config_->get_m_request_uri_size_limit())
     std::cout << "URI SIZE ERROR" << std::endl;
   return false;
 }
@@ -211,7 +207,7 @@ int Connection::RecvWithoutBody(char *buf, int buf_size) {
 }
 
 bool Connection::IsValidHeader(std::string header) {
-  if (header.size() > m_serverconfig_->get_m_request_header_size_limit()) { //m_server->get_m_request_header_limit_size()
+  if (header.size() > m_server_config_->get_m_request_header_size_limit()) { //m_server->get_m_request_header_limit_size()
     std::cout << "Error: Header Size is over than limit size" << std::endl;
     return false; //throw 40005
   }
@@ -240,7 +236,7 @@ bool Connection::ParseHeader() {
   //   return false;
   // }
   // return true;
-  while(ft::getLine(read_buf, line, m_serverconfig_->get_m_request_header_size_limit()) >= 0) {
+  while(ft::getLine(read_buf, line, m_server_config_->get_m_request_header_size_limit()) >= 0) {
     if (line == "") {
       if (!ft::hasKey(m_request_.get_m_headers(), "Host")) {
         std::cout << "Error: Header is not Valid" << std::endl; //throw 40010
@@ -386,8 +382,6 @@ void Connection::addReadbufferClient(const char* str, int size) {
   m_read_buffer_client_.append(str, size);
 }
 
-Connection(int client_fd, std::string& client_ip, int client_port) {}
-
 void Connection::RecvRequest(void) {
   char buf[BUFFER_SIZE];
   int fd;
@@ -415,7 +409,7 @@ void Connection::RecvRequest(void) {
 
 void Connection::ReportCreateNewRequestLog(int status)
 {
-	std::string text = "[Failed][Request][Server:" + m_serverconfig_->get_m_server_name() + "][CIP:"
+	std::string text = "[Failed][Request][Server:" + m_server_config_->get_m_server_name() + "][CIP:"
 	+ m_client_ip_ + "][CFD:" + ft::to_string(m_client_fd_) + "]["
 	+ ft::to_string(status) + "][" + Response::status[status] + "] Failed to create new Request.\n";
 	ft::log(ServerManager::log_fd, text);
@@ -425,7 +419,7 @@ void Connection::ReportCreateNewRequestLog(int status)
 std::string Connection::GetDateHeader() {
   char buff[1024];
   struct tm t;
-  timeval now;  
+  timeval now;
 
   gettimeofday(&now, NULL);
   ft::convertTimespecToTm(now.tv_sec, &t);
@@ -434,7 +428,7 @@ std::string Connection::GetDateHeader() {
 }
 
 std::string Connection::GetServerHeader() {
-  return "Server:" + m_serverconfig_->get_m_server_name();
+  return "Server:" + m_server_config_->get_m_server_name();
 }
 
 void Connection::CreateCGIResponse(int& status, headers_t& headers, std::string& body) {
@@ -474,12 +468,12 @@ void Connection::CreateResponse(int status, headers_t headers, std::string body)
   if (status == CGI_SUCCESS_CODE)
     CreateCGIResponse(status, headers, body);
   if (status >= 400 && status <= 599) {
-    body = m_serverconfig_->get_m_default_error_page_path();
+    body = m_server_config_->get_m_default_error_page_path();
     body.replace(body.find("#ERROR_CODE"), 11, ft::to_string(status));
     body.replace(body.find("#ERROR_CODE"), 11, ft::to_string(status));
     body.replace(body.find("#ERROR_DESCRIPTION"), 18, Response::status[status]);
     body.replace(body.find("#ERROR_DESCRIPTION"), 18, Response::status[status]);
-    body.replace(body.find("#PORT"), 5, ft::to_string(m_serverconfig_->get_m_port()));
+    body.replace(body.find("#PORT"), 5, ft::to_string(m_server_config_->get_m_port()));
   }
   if (!ft::hasKey(ft::stringVectorToMap(headers), "Transfer-Encoding"))
     headers.push_back("Content-Length:" + ft::to_string(body.size()));

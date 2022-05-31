@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   HtmlWriter.cpp                                     :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: plee <plee@student.42.fr>                  +#+  +:+       +#+        */
+/*   By: jihoolee <jihoolee@student.42SEOUL.kr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/30 14:52:56 by plee              #+#    #+#             */
-/*   Updated: 2022/05/30 15:17:24 by plee             ###   ########.fr       */
+/*   Updated: 2022/05/31 17:46:22 by jihoolee         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -29,11 +29,6 @@ std::string HtmlWriter::get_m_body() const { return (this->m_body_); }
 
 void HtmlWriter::set_m_body(std::string body) { this->m_body_ = body; }
 
-/*
-** add title tag in header section
-** @param: tilte content
-** @return: void
-*/
 void HtmlWriter::Add_title(std::string title_content) {
   std::string token = "<title>" + title_content + "</title>";
 
@@ -43,11 +38,6 @@ void HtmlWriter::Add_title(std::string title_content) {
   m_body_.insert(m_body_.find("<head>") + 6, token);
 }
 
-/*
-** add inline color css in body open tag
-** @param: color of background
-** @return: void
-*/
 void HtmlWriter::Add_bgcolor(std::string bg_color) {
   int idx = m_body_.find("<body");
   std::string token = " bgcolor=\"" + bg_color + "\"";
@@ -61,13 +51,6 @@ void HtmlWriter::Add_bgcolor(std::string bg_color) {
   m_body_.insert(idx, token);
 }
 
-/*
-** add pair tag
-** @param1: position to insert
-** @param2: tag name
-** @param3: content between tag
-** @return: void
-*/
 void HtmlWriter::Add_tag(std::string front_token, std::string tag, std::string content, bool newline) {
   std::string token = "<" + tag + ">";
 
@@ -80,11 +63,6 @@ void HtmlWriter::Add_tag(std::string front_token, std::string tag, std::string c
   m_body_.insert(m_body_.find(front_token) + front_token.size(), token);
 }
 
-/*
-** insert text with '\n' to back of token(using rfind)
-** @param: text to insert
-** @return: void
-*/
 void HtmlWriter::Add_text(std::string front_token, std::string content, bool newline) {
   std::string token = content;
 
@@ -93,12 +71,6 @@ void HtmlWriter::Add_text(std::string front_token, std::string content, bool new
   m_body_.insert(m_body_.rfind(front_token) + front_token.size(), token);
 }
 
-/*
-** make a tag token with address and content
-** @param1: relative/absolute path
-** @param2: content in a tag
-** @return: <a> token
-*/
 std::string
 HtmlWriter::MakeLink(std::string address, std::string content)
 {
@@ -111,12 +83,6 @@ HtmlWriter::MakeLink(std::string address, std::string content)
   return token;
 }
 
-/*
-** insert text with '\n' by line number
-** @param1: line index to insert
-** @param2: line to insert
-** @return: void
-*/
 void HtmlWriter::Add_line(int line_idx, std::string line) {
   int idx = 1;
   int pos = 0;
@@ -126,6 +92,6 @@ void HtmlWriter::Add_line(int line_idx, std::string line) {
     pos += body.find("\n") + 1;
     body = body.substr(body.find("\n") + 1);
     ++idx;
-  } 
+  }
   m_body_.insert(pos, line + "\n");
 }

@@ -3,15 +3,15 @@
 /*                                                        :::      ::::::::   */
 /*   HtmlWriter.hpp                                     :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: plee <plee@student.42.fr>                  +#+  +:+       +#+        */
+/*   By: jihoolee <jihoolee@student.42SEOUL.kr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/30 14:52:53 by plee              #+#    #+#             */
-/*   Updated: 2022/05/30 20:47:48 by plee             ###   ########.fr       */
+/*   Updated: 2022/05/31 17:38:21 by jihoolee         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#ifndef HTMLWRITER_HPP
-# define HTMLWRITER_HPP
+#ifndef HTML_WRITER_HPP
+# define HTML_WRITER_HPP
 
 # include <iostream>
 # include <string>
@@ -41,4 +41,4 @@ class HtmlWriter {
   std::string m_body_;
 };
 
-#endif
+#endif  //  HTML_WRITER_HPP_

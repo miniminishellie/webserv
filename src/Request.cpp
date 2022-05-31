@@ -3,20 +3,21 @@
 /*                                                        :::      ::::::::   */
 /*   Request.cpp                                        :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: plee <plee@student.42.fr>                  +#+  +:+       +#+        */
+/*   By: jihoolee <jihoolee@student.42SEOUL.kr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/26 14:54:39 by jihoolee          #+#    #+#             */
-/*   Updated: 2022/05/30 21:19:44 by plee             ###   ########.fr       */
+/*   Updated: 2022/05/31 20:01:34 by jihoolee         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "Request.hpp"
-#include "Server.hpp"
+#include "ServerConfig.hpp"
 #include "Connection.hpp"
+#include "LocationConfig.hpp"
 #include "Libft.hpp"
 
 Request::Request(void)
-    : m_serverconfig_(NULL),
+    : m_server_config_(NULL),
       m_connection_(NULL),
       m_phase_(READY),
       m_method_(DEFAULT),
@@ -38,7 +39,7 @@ Request::Request(void)
 
 Request::Request(Connection* connection, ServerConfig* serverconfig, std::string start_line)
     : m_connection_(connection),
-      m_serverconfig_(serverconfig),
+      m_server_config_(serverconfig),
       m_transfer_type_(GENERAL),
       m_phase_(ON_HEADER) {
   if (gettimeofday(&m_start_at_, NULL) == -1)
@@ -48,7 +49,7 @@ Request::Request(Connection* connection, ServerConfig* serverconfig, std::string
     std::cout << "StartLine TOKEN _NUM ERROR" << std::endl; //throw(40000)
   if (!ParseMethod(parsed[0]))
     std::cout << "StartLine METHOD ERROR" << std::endl; //throw(40001)
-  if (parsed[1].length() > m_serverconfig_->get_m_request_uri_size_limit())
+  if (parsed[1].length() > m_server_config_->get_m_request_uri_size_limit())
     std::cout << "StartLine URI_LENGTH ERROR" << std::endl;//throw(41410)
   m_uri_ = parsed[1];
   m_uri_type_ = FILE;
@@ -70,7 +71,7 @@ Request::Request(Connection* connection, ServerConfig* serverconfig, std::string
 }
 
 Request::Request(const Request &r)
-    : m_serverconfig_(r.m_serverconfig_),
+    : m_server_config_(r.m_server_config_),
       m_connection_(r.m_connection_),
       m_phase_(r.m_phase_),
       m_method_(r.m_method_),
@@ -91,10 +92,10 @@ Request &Request::operator=(const Request &ref)
 {
   if (this == &ref)
     return (*this);
-  m_serverconfig_ = ref.m_serverconfig_;
+  m_server_config_ = ref.m_server_config_;
   m_connection_ = ref.m_connection_;
   m_locationconfig_ = ref.m_locationconfig_;
-  m_serverconfig_ = ref.m_serverconfig_;
+  m_server_config_ = ref.m_server_config_;
   m_start_at_ = ref.m_start_at_;
   m_phase_ = ref.m_phase_;
   m_method_ = ref.m_method_;
@@ -179,7 +180,7 @@ void Request::AddHeader(std::string header) {
     m_transfer_type_ = Request::CHUNKED;
   if (key == "Content-Length") {
     m_content_length_ = ft::stoi(value);
-    if (m_content_length_ > m_serverconfig_->get_m_client_body_size_limit())
+    if (m_content_length_ > m_server_config_->get_m_client_body_size_limit())
       std::cout << "Content length header value is over than body limit size" << std::endl;//throw (41303);
     if (m_content_length_ < 0)
       std::cout << "Content-Length header value is less than 0" << std::endl; // throw(40004)
@@ -189,7 +190,7 @@ void Request::AddHeader(std::string header) {
 }
 
 void Request::AddContent(std::string added_content) {
-  if (m_content_.size() + added_content.size() > m_serverconfig_->get_m_client_body_size_limit())
+  if (m_content_.size() + added_content.size() > m_server_config_->get_m_client_body_size_limit())
     throw (41301);
   m_content_.append(added_content);
 }
@@ -197,7 +198,7 @@ void Request::AddContent(std::string added_content) {
 bool Request::AssignLocationMatchingUri(std::string uri)
 {
   size_t max_uri_match = 0;
-  for (std::vector<LocationConfig>::const_iterator it = m_serverconfig_->get_m_locations().begin() ; it != m_serverconfig_->get_m_locations().end() ; ++it) {
+  for (std::vector<LocationConfig>::const_iterator it = m_server_config_->get_m_locations().begin() ; it != m_server_config_->get_m_locations().end() ; ++it) {
     if (std::strncmp(it->get_m_uri().c_str(), uri.c_str(), it->get_m_uri().length()) == 0 && it->get_m_uri().length() > max_uri_match) {
       m_locationconfig_ = const_cast<LocationConfig *>(&(*it));
       max_uri_match = it->get_m_uri().length();

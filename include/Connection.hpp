@@ -6,7 +6,7 @@
 /*   By: jihoolee <jihoolee@student.42SEOUL.kr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/18 21:23:44 by jihoolee          #+#    #+#             */
-/*   Updated: 2022/05/31 17:09:54 by jihoolee         ###   ########.fr       */
+/*   Updated: 2022/05/31 20:09:21 by jihoolee         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -33,8 +33,6 @@ typedef std::vector<std::string> headers_t;
 
 class WebservConfig;
 class ServerConfig;
-
-class ServerManager;
 
 class Connection {
  public:
@@ -108,31 +106,20 @@ class Connection {
   void ExecuteDelete(const Request& request);
 
  private:
-  Status        m_status_;
-  int           m_client_fd_;
-  timeval       m_last_request_at_;
-  std::string   m_client_ip_;
-  int           m_client_port_;
+  WebservConfig*  m_webserv_config_;
+  ServerConfig*   m_server_config_;
 
-  int           m_read_from_server_fd_;
-  int           m_write_to_server_fd_;
-  std::string   m_wbuf_;
-  int           m_readed_size_;
-  std::string   m_read_buffer_client_;
-  Request       m_request_;
-  Response      m_response_;
-  ServerConfig*  m_serverconfig_;
-  WebservConfig* m_webservconfig_;
-
-  ServerManager*  m_server_manager_;
   Status          m_status_;
   int             m_client_fd_;
   timeval         m_last_request_at_;
   std::string     m_client_ip_;
   int             m_client_port_;
-
+  int             m_read_from_server_fd_;
+  int             m_write_to_server_fd_;
+  std::string     m_wbuf_;
   int             m_readed_size_;
   std::string     m_read_buffer_client_;
   Request         m_request_;
-};
-#endif
+  Response        m_response_;
+};  //  class Connection
+#endif  //  CONNECTION_HPP
