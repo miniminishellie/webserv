@@ -6,7 +6,11 @@
 /*   By: plee <plee@student.42.fr>                  +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/25 21:44:42 by jihoolee          #+#    #+#             */
+<<<<<<< HEAD
 /*   Updated: 2022/05/30 21:19:13 by plee             ###   ########.fr       */
+=======
+/*   Updated: 2022/05/28 20:08:20 by jihoolee         ###   ########.fr       */
+>>>>>>> jihoolee
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -381,6 +385,8 @@ void Connection::set_m_last_request_at() {
 void Connection::addReadbufferClient(const char* str, int size) {
   m_read_buffer_client_.append(str, size);
 }
+
+Connection(int client_fd, std::string& client_ip, int client_port) {}
 
 void Connection::RecvRequest(void) {
   char buf[BUFFER_SIZE];

@@ -6,7 +6,7 @@
 /*   By: jihoolee <jihoolee@student.42SEOUL.kr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/17 18:42:34 by jihoolee          #+#    #+#             */
-/*   Updated: 2022/05/25 18:04:47 by jihoolee         ###   ########.fr       */
+/*   Updated: 2022/05/31 17:12:03 by jihoolee         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -15,27 +15,52 @@
 
 ServerManager::ServerManager(void)
     : m_is_running_(false),
+      m_mime_types_(),
       m_config_(),
-      m_servers_() {}
+      m_server_configs_(),
+      m_connections_(),
+      m_kqueue_(-1),
+      m_fd_set_(),
+      m_change_list_() {
+  make_mime_type(m_mime_types_);
+  memset(m_returned_events_, 0, sizeof(struct kevent) * 1024);
+}
 
 ServerManager::ServerManager(const ServerManager& ref)
     : m_is_running_(ref.m_is_running_),
+      m_mime_types_(ref.m_mime_types_),
       m_config_(ref.m_config_),
-      m_servers_(ref.m_servers_),
+      m_server_configs_(ref.m_server_configs_),
+      m_connections_(ref.m_connections_),
       m_kqueue_(ref.m_kqueue_),
-      m_returned_events_(ref.m_returned_events_),
-      m_change_list_(ref.m_change_list_) {}
+      m_fd_set_(),
+      m_change_list_(ref.m_change_list_) {
+  memcpy(m_returned_events_, ref.m_returned_events_,
+          sizeof(struct kevent) * 1024);
+}
 
-ServerManager::~ServerManager(void) {}
+ServerManager::~ServerManager(void) {
+  m_is_running_ = false;
+  m_mime_types_.clear();
+  m_server_configs_.clear();
+  m_connections_.clear();
+  m_kqueue_ = -1;
+  m_fd_set_.clear();
+  m_change_list_.clear();
+}
 
 ServerManager& ServerManager::operator=(const ServerManager& ref) {
   if (this == &ref)
     return *this;
   m_is_running_ = ref.m_is_running_;
+  m_mime_types_ = ref.m_mime_types_;
   m_config_ = ref.m_config_;
-  m_servers_ = ref.m_servers_;
+  m_server_configs_ = ref.m_server_configs_;
+  m_connections_ = ref.m_connections_;
   m_kqueue_ = ref.m_kqueue_;
-  m_returned_events_ = ref.m_returned_events_;
+  m_fd_set_ = ref.m_fd_set_;
+  memcpy(m_returned_events_, ref.m_returned_events_,
+          sizeof(struct kevent) * 1024);
   m_change_list_ = ref.m_change_list_;
   return *this;
 }
@@ -50,11 +75,12 @@ void  ServerManager::createServers(const std::string& config_file_path, char* en
   if (!isValidConfigBlock_(config_block)) // config_block 유효성 검사
     throw(std::invalid_argument("Config block is not valid"));
   m_config_ = WebservConfig(config_block, env); // 유효성 검사 마친 config_block m_config에 생성자 호출해 정보 저장
-  // if ((m_kqueue_ = kqueue()) == -1)
-  //   std::runtime_error("kqueue() Error");
+  if ((m_kqueue_ = kqueue()) == -1)
+    std::runtime_error("kqueue() Error");
   for (size_t i = 0; i < server_strings.size(); ++i){
     std::string server_block;
     std::vector<std::string> location_blocks;
+
     if (!splitServerString_(server_strings[i], server_block, location_blocks)) // server_block에 location block 들을 제외한 server directives가 string에 통째로, location_blocks에 locations block들이 한 블록씩 통째로 string으로 담김(특이하게 마지막 '}' 이 놈을 안담음)
       throw std::invalid_argument("Failed to split Server string");
     if (!isValidServerBlock_(server_block)) // server_block 유효성 검사
@@ -63,13 +89,163 @@ void  ServerManager::createServers(const std::string& config_file_path, char* en
       if (!isValidLocationBlock_(location_blocks[j])) // location_blocks 유효성 검사
         throw std::invalid_argument("Location block is not valid");
     }
-    std::cout << "count : " << i + 1 << std::endl;
-    m_servers_.push_back(Server(this, &this->m_config_, server_block, location_blocks));
-    // changeEvents_(m_change_list_, new_server.get_m_socket_fd(), EVFILT_READ,
-    //               EV_ADD | EV_ENABLE, 0, 0, NULL);
-    std::cout << "hi";
-    std::cout << Server(this, &this->m_config_, server_block, location_blocks);
+    ServerConfig new_server =
+        ServerConfig(&this->m_config_, server_block, location_blocks);
+    addServer_(new_server);
+    // std::cout << Server(this, &this->m_config_, server_block, location_blocks);
   }
+}
+
+void ServerManager::exitWebserv(const std::string& what) {
+  std::cerr << what << std::endl;
+  exit(EXIT_SUCCESS);
+}
+
+void ServerManager::runServers(void) {
+  signal(SIGINT, this->changeSignal_);
+
+  struct timeval  timeout;
+
+  timeout.tv_sec = 0;
+  timeout.tv_usec = 0;
+  m_is_running_ = true;
+
+  int new_events;
+  struct kevent* curr_event;
+
+  while (m_is_running_) {
+    if ((new_events = kevent(m_kqueue_, &m_change_list_[0],
+                              m_change_list_.size(), m_returned_events_,
+                              1024, NULL)) == -1)
+      throw std::runtime_error("kevent() Error");
+    m_change_list_.clear();
+    for (int i = 0; i < new_events; ++i) {
+      curr_event = &m_returned_events_[i];
+      if (curr_event->flags & EV_ERROR)
+        throw std::runtime_error("socket error in kevent");
+      else if (curr_event->filter == EVFILT_READ) {
+        switch (m_fd_set_[curr_event->ident]) {
+          case FD_SERVER: {
+          // if (m_connections.size() >= (1024 / m_manager->get_m_servers().size())) {
+          //    int fd = getUnuseConnectionFd();
+          //    if (fd == -1)
+          //      return ;
+          //    closeConnection(fd);
+          // }
+            if (!acceptNewConnection_(curr_event->ident)) {
+              // std::cerr << "[Failed][Connection][Server:"
+              //               + m_server_name + "][Host:" + m_host
+	            //               + "] Failed to create new connection.\n"
+              std::cerr << "accept new connection failed";
+            }
+            break;
+          }
+          case FD_CLIENT: {
+            Connection& connection_to_run = m_connections_[curr_event->ident];
+
+            try {
+              connection_to_run.RunRecvAndSolve();
+            } //catch(Server::IOError& e) {
+            //   ft::log(ServerManager::log_fd, ft::getTimestamp() + e.location() + std::string("\n"));
+            //   closeConnection(fd);
+            // } catch (...) {
+            //   ft::log(ServerManager::log_fd, ft::getTimestamp() + "detected some error" + std::string("\n"));
+            //   closeConnection(fd);
+            // }
+            catch(...){}
+          }
+        }
+      } else if (curr_event->filter == EVFILT_WRITE) {
+      }
+    }
+    usleep(5);
+  }
+}
+
+void ServerManager::insertFd(int fd, FdType type) {
+  m_fd_set_[fd] = type;
+}
+
+void ServerManager::addEvent(uintptr_t ident,
+                              int16_t filter,
+                              uint16_t flags,
+                              uint32_t fflags,
+                              intptr_t data,
+                              void* udata) {
+  changeEvents_(m_change_list_, ident, filter, flags, fflags, data, udata);
+}
+
+void ServerManager::addServer_(ServerConfig new_server) {
+  int server_socket_fd;
+
+  if ((server_socket_fd = socket(PF_INET, SOCK_STREAM, 0)) == -1)
+    throw std::runtime_error("socket() Error");
+
+  int opt = 1;
+  struct sockaddr_in serv_addr;
+
+  setsockopt(server_socket_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
+  memset(&serv_addr, 0, sizeof(serv_addr));
+  serv_addr.sin_family = AF_INET;
+  serv_addr.sin_addr.s_addr = inet_addr(new_server.get_m_host().c_str());
+  serv_addr.sin_port = htons(new_server.get_m_port());
+  if (bind(server_socket_fd,
+            reinterpret_cast<struct sockaddr*>(&serv_addr),
+            sizeof(serv_addr)) == -1)
+    throw std::runtime_error("bind() Error");
+  if (listen(server_socket_fd, 256) == -1)  //  backlog 크기는 나중에 테스트 후 수정
+    throw std::runtime_error("listen() Error");
+  if (fcntl(server_socket_fd, F_SETFL, O_NONBLOCK) == -1)
+    throw std::runtime_error("fcntl() Error");
+  changeEvents_(m_change_list_, server_socket_fd, EVFILT_READ,
+                  EV_ADD | EV_ENABLE, 0, 0, NULL);
+  insertFd(server_socket_fd, FD_SERVER);
+}
+
+void ServerManager::changeSignal_(int sig) {
+  (void)sig;
+  m_is_running_ = false;
+}
+
+void ServerManager::changeEvents_(std::vector<struct kevent>& change_list,
+                                  uintptr_t ident,
+                                  int16_t filter,
+                                  uint16_t flags,
+                                  uint32_t fflags,
+                                  intptr_t data,
+                                  void* udata) {
+  struct kevent temp_event;
+
+  EV_SET(&temp_event, ident, filter, flags, fflags, data, udata);
+  change_list.push_back(temp_event);
+}
+
+bool ServerManager::acceptNewConnection_(int server_socket_fd) {
+  struct sockaddr_in  client_addr;
+  socklen_t           client_addr_size = sizeof(struct sockaddr);
+  int                 client_fd;
+  std::string         client_ip;
+  int                 client_port;
+
+  bzero(&client_addr, client_addr_size);
+  if ((client_fd = accept(server_socket_fd,
+        (struct sockaddr*)&client_addr, &client_addr_size)) == -1) {
+    std::cerr << "accpt() function for client_fd failed" << std::endl;
+    return false;
+  }
+  if (fcntl(client_fd, F_SETFL, O_NONBLOCK) == -1)
+    return false;
+  // setsockopt(client_fd, SOL_SOCKET, SO_RCVTIMEO, (struct timeval*)&tv, sizeof(struct timeval));
+  // setsockopt(client_fd, SOL_SOCKET, SO_SNDTIMEO, (struct timeval*)&tv, sizeof(struct timeval));
+  addEvent(client_fd, EVFILT_READ, EV_ADD | EV_ENABLE,
+            0, 0, NULL);
+  addEvent(client_fd, EVFILT_WRITE, EV_ADD | EV_ENABLE,
+            0, 0, NULL);
+  client_ip = ft::inet_ntoa(client_addr.sin_addr.s_addr);
+  client_port = static_cast<int>(client_addr.sin_port);
+  m_connections_[client_fd] = Connection(client_fd, client_ip, client_port);
+  insertFd(client_fd, FD_CLIENT);
+  return true;
 }
 
 namespace {
@@ -113,6 +289,45 @@ std::vector<std::string> groupLineWithCondition(std::vector<std::string>& lines,
 bool isValidIpByte(std::string s) { return ((ft::stoi(s) >= 0) && (ft::stoi(s) <= 255)); }
 bool isValidCgi(std::string data) { return (data[0] == '.'); }
 bool isDigit(char c) { return (c >= '0' && c <= '9'); }
+
+void make_mime_type(std::map<std::string, std::string>& m_mime_types_) {
+	m_mime_types_["avi"] = "video/x-msvivdeo";
+	m_mime_types_["bin"] = "application/octet-stream";
+	m_mime_types_["bmp"] = "image/bmp";
+	m_mime_types_["css"] = "text/css";
+	m_mime_types_["csv"] = "text/csv";
+	m_mime_types_["doc"] = "application/msword";
+	m_mime_types_["docx"] = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+	m_mime_types_["gz"] = "application/gzip";
+	m_mime_types_["gif"] = "image/gif";
+	m_mime_types_["htm"] = "text/html";
+	m_mime_types_["html"] = "text/html";
+	m_mime_types_["ico"] = "image/vnd.microsoft.icon";
+	m_mime_types_["jepg"] = "image/jepg";
+	m_mime_types_["jpg"] = "image/jepg";
+	m_mime_types_["js"] = "text/javascript";
+	m_mime_types_["json"] = "application/json";
+	m_mime_types_["mp3"] = "audio/mpeg";
+	m_mime_types_["mpeg"] = "video/mpeg";
+	m_mime_types_["png"] = "image/png";
+	m_mime_types_["pdf"] = "apllication/pdf";
+	m_mime_types_["php"] = "application/x-httpd-php";
+	m_mime_types_["ppt"] = "application/vnd.ms-powerpoint";
+	m_mime_types_["pptx"] = "application/vnd.openxmlformats-officedocument.presentationml.presentation";
+	m_mime_types_["rar"] = "application/vnd.rar";
+	m_mime_types_["sh"] = "application/x-sh";
+	m_mime_types_["svg"] = "image/svg+xml";
+	m_mime_types_["tar"] = "application/x-tar";
+	m_mime_types_["tif"] = "image/tiff";
+	m_mime_types_["txt"] = "text/plain";
+	m_mime_types_["wav"] = "audio/wav";
+	m_mime_types_["xls"] = "application/xhtml+xml";
+	m_mime_types_["xlsx"] = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+	m_mime_types_["zip"] = "application/zip";
+	m_mime_types_["bad_extension"] = "application/bad";
+	m_mime_types_["bla"] = "application/42cgi";
+	m_mime_types_["pouic"] = "application/pouic";
+}
 }  //  anonymous namespace
 
 bool ServerManager::splitConfigString_(std::string& config_string, std::string& config_block,\
@@ -267,53 +482,4 @@ bool ServerManager::isValidLocationBlock_(std::string& location_block){
       return (false);
   }
   return (true);
-}
-
-void ServerManager::runServers(void) {
-  // signal(SIGINT, this->changeSignal_);
-
-  // struct timeval  timeout;
-
-  // timeout.tv_sec = 0;
-  // timeout.tv_usec = 0;
-  // m_is_running_ = true;
-
-  // int new_events;
-  // struct kevent* curr_event;
-
-  // while (m_is_running_) {
-  //   if ((new_events = kevent(m_kqueue_, &m_change_list_[0],
-  //                             m_change_list_.size(), m_returned_events_,
-  //                             1024, NULL)) == -1)
-  //     throw std::runtime_error("kevent() Error");
-  //   m_change_list_.clear();
-  //   for (int i = 0; i < new_events; ++i) {
-  //     curr_event = &m_returned_events_[i];
-  //     if (curr_event->flags & EV_ERROR) {
-  //     }
-  //   }
-  // }
-}
-
-void ServerManager::exitWebserv(const std::string& what) {
-  std::cerr << what << std::endl;
-  exit(EXIT_SUCCESS);
-}
-
-void ServerManager::changeSignal_(int sig) {
-  (void)sig;
-  m_is_running_ = false;
-}
-
-void ServerManager::changeEvents_(std::vector<struct kevent>& change_list,
-                                  uintptr_t ident,
-                                  int16_t filter,
-                                  uint16_t flags,
-                                  uint32_t fflags,
-                                  intptr_t data,
-                                  void* udata) {
-  struct kevent temp_event;
-
-  EV_SET(&temp_event, ident, filter, flags, fflags, data, udata);
-  change_list.push_back(temp_event);
 }

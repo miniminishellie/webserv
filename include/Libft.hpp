@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Libft.hpp                                          :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: plee <plee@student.42.fr>                  +#+  +:+       +#+        */
+/*   By: jihoolee <jihoolee@student.42SEOUL.kr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/21 15:11:56 by bylee             #+#    #+#             */
-/*   Updated: 2022/05/30 19:57:54 by plee             ###   ########.fr       */
+/*   Updated: 2022/05/31 17:11:00 by jihoolee         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -63,6 +63,8 @@ std::map<std::string, std::string>  stringVectorToMap(
                                       char sep = ':');
 std::set<std::string>               stringVectorToSet(
                                       std::vector<std::string> stringVector);
+std::string to_string(long long int n);
+std::string inet_ntoa(unsigned int address);
 
 template <typename T, typename V>
 bool hasKey(T container, V value) {

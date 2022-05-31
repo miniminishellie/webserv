@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Libft.cpp                                          :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: plee <plee@student.42.fr>                  +#+  +:+       +#+        */
+/*   By: jihoolee <jihoolee@student.42SEOUL.kr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/21 15:14:43 by bylee             #+#    #+#             */
-/*   Updated: 2022/05/30 19:57:55 by plee             ###   ########.fr       */
+/*   Updated: 2022/05/31 17:11:23 by jihoolee         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -221,20 +221,6 @@ stringVectorToSet(std::vector<std::string> stringVector) {
   return (ret);
 }
 
-std::vector<std::string> split(std::string s, char c) {
-  std::vector<std::string> result;
-  size_t pos = 0;
-
-  while ((pos = s.find(c)) != std::string::npos) {
-    if (pos != 0)
-      result.push_back(s.substr(0, pos));
-    s.erase(0, pos + 1);
-  }
-  if (s.length() != 0)
-    result.push_back(s);
-  return (result);
-}
-
 void log(int log_fd, std::string text) {
   if (log_fd != -1)
     write(log_fd, text.c_str(), text.size());
@@ -332,7 +318,7 @@ std::string itos(std::string number, size_t from, size_t to) {
     ret.insert(ret.begin(), base[data % to]);
     data /= to;
   }
-  return (ret); 
+  return (ret);
 }
 
 std::string	getTimestamp(void) {
@@ -341,7 +327,7 @@ std::string	getTimestamp(void) {
   std::string ret;
   std::string data;
   ret.append("[" + ft::to_string(now->tm_year + 1900) + "_");
-  
+
   data = ft::to_string(now->tm_mon + 1);
   if (data.size() == 1)
     ret.append("0" + data);
@@ -422,5 +408,29 @@ int freeDoublestr(char ***doublestr_addr) {
   return (1);
 }
 
+std::string to_string(long long int n) {
+  long long int   nb;
+  std::string		str;
 
+  if (n == 0)
+    return ("0");
+  nb = n;
+  while (nb != 0) {
+    str.insert(str.begin(), static_cast<char>((ft::abs(nb % 10) + 48)));
+    nb = nb / 10;
+  }
+  if (n < 0)
+    str.insert(str.begin(), '-');
+  return (str);
+}
+
+std::string inet_ntoa(unsigned int address) {
+  std::string ret;
+
+  ret = ft::to_string(address & 0xFF) + ".";
+  ret.append(ft::to_string ((address >> 8) & 0xFF) + ".");
+  ret.append(ft::to_string ((address >> 16) & 0xFF) + ".");
+  ret.append(ft::to_string ((address >> 24) & 0xFF) + ".");
+  return ret;
+}
 }  //  namespace ft

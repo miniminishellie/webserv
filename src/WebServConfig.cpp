@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   WebServConfig.cpp                                  :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: bylee <bylee@student.42.fr>                +#+  +:+       +#+        */
+/*   By: jihoolee <jihoolee@student.42SEOUL.kr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/24 22:09:15 by bylee             #+#    #+#             */
-/*   Updated: 2022/05/24 22:13:29 by bylee            ###   ########.fr       */
+/*   Updated: 2022/05/28 17:03:29 by jihoolee         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -63,19 +63,19 @@ WebservConfig::~WebservConfig(){
 /*
   Getter implementation
 */
-std::string WebservConfig::get_m_software_name() const { 
+std::string WebservConfig::get_m_software_name() const {
   return (this->m_software_name_);
 }
-std::string WebservConfig::get_m_software_version() const { 
+std::string WebservConfig::get_m_software_version() const {
   return (this->m_software_version_);
 }
-std::string WebservConfig::get_m_http_version() const { 
+std::string WebservConfig::get_m_http_version() const {
   return (this->m_http_version_);
 }
-std::string WebservConfig::get_m_cgi_version() const { 
+std::string WebservConfig::get_m_cgi_version() const {
   return (this->m_cgi_version_);
 }
-char      **WebservConfig::get_m_base_env() const { 
+char      **WebservConfig::get_m_base_env() const {
   return (this->m_base_env_);
 }
 
