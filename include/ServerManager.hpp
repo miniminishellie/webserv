@@ -6,7 +6,7 @@
 /*   By: jihoolee <jihoolee@student.42SEOUL.kr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/20 22:17:14 by bylee             #+#    #+#             */
-/*   Updated: 2022/05/31 19:37:24 by jihoolee         ###   ########.fr       */
+/*   Updated: 2022/06/01 14:43:34 by jihoolee         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -66,6 +66,8 @@ class ServerManager {
                     intptr_t data,
                     void* udata);
 
+  void  openLog(void);
+
  private:
   void  addServer_(ServerConfig new_server);
   void  changeSignal_(int sig);
@@ -78,6 +80,8 @@ class ServerManager {
                       void* udata);
   bool  acceptNewConnection_(int server_socket_fd);
 
+  void  writeCreateServerLog_(void);
+
   bool  splitConfigString_(std::string& config_string,
           std::string& config_block,
           std::vector<std::string>& serveral_strings);
@@ -87,8 +91,6 @@ class ServerManager {
   bool isValidServerBlock_(std::string& server_block);
   bool isValidLocationBlock_(std::string& location_block);
 
-  bool                                m_is_running_;
-  std::map<std::string, std::string>  m_mime_types_;
   WebservConfig                       m_config_;
   std::map<int, ServerConfig>         m_server_configs_;
   std::map<int, Connection>           m_connections_;

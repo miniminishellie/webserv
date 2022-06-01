@@ -6,7 +6,7 @@
 /*   By: jihoolee <jihoolee@student.42SEOUL.kr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/17 18:42:34 by jihoolee          #+#    #+#             */
-/*   Updated: 2022/05/31 19:41:17 by jihoolee         ###   ########.fr       */
+/*   Updated: 2022/06/01 15:34:03 by jihoolee         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,22 +14,17 @@
 #include "Libft.hpp"
 
 ServerManager::ServerManager(void)
-    : m_is_running_(false),
-      m_mime_types_(),
-      m_config_(),
+    : m_config_(),
       m_server_configs_(),
       m_connections_(),
       m_kqueue_(-1),
       m_fd_set_(),
       m_change_list_() {
-  make_mime_type(m_mime_types_);
   memset(m_returned_events_, 0, sizeof(struct kevent) * 1024);
 }
 
 ServerManager::ServerManager(const ServerManager& ref)
-    : m_is_running_(ref.m_is_running_),
-      m_mime_types_(ref.m_mime_types_),
-      m_config_(ref.m_config_),
+    : m_config_(ref.m_config_),
       m_server_configs_(ref.m_server_configs_),
       m_connections_(ref.m_connections_),
       m_kqueue_(ref.m_kqueue_),
@@ -40,8 +35,6 @@ ServerManager::ServerManager(const ServerManager& ref)
 }
 
 ServerManager::~ServerManager(void) {
-  m_is_running_ = false;
-  m_mime_types_.clear();
   m_server_configs_.clear();
   m_connections_.clear();
   m_kqueue_ = -1;
@@ -52,8 +45,6 @@ ServerManager::~ServerManager(void) {
 ServerManager& ServerManager::operator=(const ServerManager& ref) {
   if (this == &ref)
     return *this;
-  m_is_running_ = ref.m_is_running_;
-  m_mime_types_ = ref.m_mime_types_;
   m_config_ = ref.m_config_;
   m_server_configs_ = ref.m_server_configs_;
   m_connections_ = ref.m_connections_;
@@ -64,6 +55,8 @@ ServerManager& ServerManager::operator=(const ServerManager& ref) {
   m_change_list_ = ref.m_change_list_;
   return *this;
 }
+
+bool  g_is_running;
 
 void  ServerManager::createServers(const std::string& config_file_path, char* env[]) {
   std::string config_string = ft::getStringFromFile(config_file_path); //config_string에 .conf 파일 통째로 string에 담김
@@ -87,13 +80,15 @@ void  ServerManager::createServers(const std::string& config_file_path, char* en
       throw std::invalid_argument("Server block is not valid");
     for (size_t j = 0; j < location_blocks.size(); ++j){
       if (!isValidLocationBlock_(location_blocks[j])) // location_blocks 유효성 검사
-        throw std::invalid_argument("Location block is not valid");
+        throw std::invalid_argument("Location block(" + ft::to_string(i) + "-" +
+                                      ft::to_string(j) + ") is not valid");
     }
     ServerConfig new_server =
         ServerConfig(&this->m_config_, server_block, location_blocks);
     addServer_(new_server);
     // std::cout << Server(this, &this->m_config_, server_block, location_blocks);
   }
+  writeCreateServerLog_();
 }
 
 void ServerManager::exitWebserv(const std::string& what) {
@@ -104,20 +99,22 @@ void ServerManager::exitWebserv(const std::string& what) {
 void ServerManager::runServers(void) {
   signal(SIGINT, this->changeSignal_);
 
-  struct timeval  timeout;
+  struct timespec  timeout;
 
   timeout.tv_sec = 0;
-  timeout.tv_usec = 0;
-  m_is_running_ = true;
+  timeout.tv_nsec = 0;
+  g_is_running = true;
 
   int new_events;
   struct kevent* curr_event;
 
-  while (m_is_running_) {
+  while (g_is_running) {
     if ((new_events = kevent(m_kqueue_, &m_change_list_[0],
                               m_change_list_.size(), m_returned_events_,
-                              1024, NULL)) == -1)
+                              1024, &timeout)) == -1) {
+      ft::log(ServerManager::log_fd, "Select function failed");
       throw std::runtime_error("kevent() Error");
+    }
     m_change_list_.clear();
     for (int i = 0; i < new_events; ++i) {
       curr_event = &m_returned_events_[i];
@@ -137,6 +134,7 @@ void ServerManager::runServers(void) {
               //               + m_server_name + "][Host:" + m_host
 	            //               + "] Failed to create new connection.\n"
               std::cerr << "accept new connection failed";
+              continue;
             }
             break;
           }
@@ -160,6 +158,7 @@ void ServerManager::runServers(void) {
     }
     usleep(5);
   }
+  exitWebserv("Webserv exited\n");
 }
 
 void ServerManager::insertFd(int fd, FdType type) {
@@ -173,6 +172,14 @@ void ServerManager::addEvent(uintptr_t ident,
                               intptr_t data,
                               void* udata) {
   changeEvents_(m_change_list_, ident, filter, flags, fflags, data, udata);
+}
+
+void ServerManager::openLog(void) {
+  std::string date = ft::getTimestamp();
+  date = date.substr(1, date.size() - 2);
+  std::string log_path = "log/" + date + "_log";
+  if ((ServerManager::log_fd = open(log_path.c_str(), O_WRONLY | O_CREAT, O_TRUNC, 0755)) == -1)
+    return;
 }
 
 void ServerManager::addServer_(ServerConfig new_server) {
@@ -204,7 +211,8 @@ void ServerManager::addServer_(ServerConfig new_server) {
 
 void ServerManager::changeSignal_(int sig) {
   (void)sig;
-  m_is_running_ = false;
+  g_is_running = false;
+  ft::log(ServerManager::log_fd, "signal execute");
 }
 
 void ServerManager::changeEvents_(std::vector<struct kevent>& change_list,
@@ -246,6 +254,12 @@ bool ServerManager::acceptNewConnection_(int server_socket_fd) {
   m_connections_[client_fd] = Connection(client_fd, client_ip, client_port);
   insertFd(client_fd, FD_CLIENT);
   return true;
+}
+
+void ServerManager::writeCreateServerLog_(void) {
+  std::string msg = "[Created][Servers]" + ft::to_string(m_server_configs_.size()) + " servers created successfully.\n";
+	ft::log(ServerManager::log_fd, msg);
+	return ;
 }
 
 namespace {
@@ -290,44 +304,6 @@ bool isValidIpByte(std::string s) { return ((ft::stoi(s) >= 0) && (ft::stoi(s) <
 bool isValidCgi(std::string data) { return (data[0] == '.'); }
 bool isDigit(char c) { return (c >= '0' && c <= '9'); }
 
-void make_mime_type(std::map<std::string, std::string>& m_mime_types_) {
-	m_mime_types_["avi"] = "video/x-msvivdeo";
-	m_mime_types_["bin"] = "application/octet-stream";
-	m_mime_types_["bmp"] = "image/bmp";
-	m_mime_types_["css"] = "text/css";
-	m_mime_types_["csv"] = "text/csv";
-	m_mime_types_["doc"] = "application/msword";
-	m_mime_types_["docx"] = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
-	m_mime_types_["gz"] = "application/gzip";
-	m_mime_types_["gif"] = "image/gif";
-	m_mime_types_["htm"] = "text/html";
-	m_mime_types_["html"] = "text/html";
-	m_mime_types_["ico"] = "image/vnd.microsoft.icon";
-	m_mime_types_["jepg"] = "image/jepg";
-	m_mime_types_["jpg"] = "image/jepg";
-	m_mime_types_["js"] = "text/javascript";
-	m_mime_types_["json"] = "application/json";
-	m_mime_types_["mp3"] = "audio/mpeg";
-	m_mime_types_["mpeg"] = "video/mpeg";
-	m_mime_types_["png"] = "image/png";
-	m_mime_types_["pdf"] = "apllication/pdf";
-	m_mime_types_["php"] = "application/x-httpd-php";
-	m_mime_types_["ppt"] = "application/vnd.ms-powerpoint";
-	m_mime_types_["pptx"] = "application/vnd.openxmlformats-officedocument.presentationml.presentation";
-	m_mime_types_["rar"] = "application/vnd.rar";
-	m_mime_types_["sh"] = "application/x-sh";
-	m_mime_types_["svg"] = "image/svg+xml";
-	m_mime_types_["tar"] = "application/x-tar";
-	m_mime_types_["tif"] = "image/tiff";
-	m_mime_types_["txt"] = "text/plain";
-	m_mime_types_["wav"] = "audio/wav";
-	m_mime_types_["xls"] = "application/xhtml+xml";
-	m_mime_types_["xlsx"] = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
-	m_mime_types_["zip"] = "application/zip";
-	m_mime_types_["bad_extension"] = "application/bad";
-	m_mime_types_["bla"] = "application/42cgi";
-	m_mime_types_["pouic"] = "application/pouic";
-}
 }  //  anonymous namespace
 
 bool ServerManager::splitConfigString_(std::string& config_string, std::string& config_block,\
@@ -395,10 +371,11 @@ bool ServerManager::isValidServerBlock_(std::string& server_block){
   if (port != PORT_HTTP && port != PORT_HTTPS && (port < PORT_REGISTERED_MIN || PORT_REGISTERED_MAX > 49151))
     return (false);
 
-  // for (std::vector<Server>::iterator it = m_servers_.begin(); it != m_servers_.end(); ++it) {
-  //   if (it->get_m_config().get_m_port() == port)
-  //     return (false);
-  // }
+  for (std::map<int, ServerConfig>::iterator it = m_server_configs_.begin();
+        it != m_server_configs_.end();
+        ++it)
+    if (it->second.get_m_port() == port)
+      return false;
 
   int uri_limit = std::atoi(map_block.find(key[2])->second.c_str());
   if (uri_limit < REQUEST_URI_LIMIT_SIZE_MIN || uri_limit > REQUEST_URI_LIMIT_SIZE_MAX)
