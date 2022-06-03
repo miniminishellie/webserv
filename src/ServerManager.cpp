@@ -6,7 +6,7 @@
 /*   By: jihoolee <jihoolee@student.42SEOUL.kr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/17 18:42:34 by jihoolee          #+#    #+#             */
-/*   Updated: 2022/06/01 15:34:03 by jihoolee         ###   ########.fr       */
+/*   Updated: 2022/06/03 21:33:48 by jihoolee         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -56,9 +56,13 @@ ServerManager& ServerManager::operator=(const ServerManager& ref) {
   return *this;
 }
 
+WebservConfig ServerManager::get_m_config() const {
+  return m_config_;
+}
+
 bool  g_is_running;
 
-void  ServerManager::createServers(const std::string& config_file_path, char* env[]) {
+void ServerManager::createServers(const std::string& config_file_path, char* env[]) {
   std::string config_string = ft::getStringFromFile(config_file_path); //config_string에 .conf 파일 통째로 string에 담김
   std::string config_block;
   std::vector<std::string> server_strings;
@@ -98,11 +102,6 @@ void ServerManager::exitWebserv(const std::string& what) {
 
 void ServerManager::runServers(void) {
   signal(SIGINT, this->changeSignal_);
-
-  struct timespec  timeout;
-
-  timeout.tv_sec = 0;
-  timeout.tv_nsec = 0;
   g_is_running = true;
 
   int new_events;
@@ -111,7 +110,7 @@ void ServerManager::runServers(void) {
   while (g_is_running) {
     if ((new_events = kevent(m_kqueue_, &m_change_list_[0],
                               m_change_list_.size(), m_returned_events_,
-                              1024, &timeout)) == -1) {
+                              1024, NULL)) == -1) {
       ft::log(ServerManager::log_fd, "Select function failed");
       throw std::runtime_error("kevent() Error");
     }
@@ -123,17 +122,19 @@ void ServerManager::runServers(void) {
       else if (curr_event->filter == EVFILT_READ) {
         switch (m_fd_set_[curr_event->ident]) {
           case FD_SERVER: {
-          // if (m_connections.size() >= (1024 / m_manager->get_m_servers().size())) {
-          //    int fd = getUnuseConnectionFd();
-          //    if (fd == -1)
-          //      return ;
-          //    closeConnection(fd);
-          // }
+            if (m_connections_.size() + m_server_configs_.size() >= 1024) {
+              int fd = getUnusedConnectionFd();
+
+              if (fd == -1)
+                continue;
+              closeConnection(fd);
+            }
             if (!acceptNewConnection_(curr_event->ident)) {
-              // std::cerr << "[Failed][Connection][Server:"
-              //               + m_server_name + "][Host:" + m_host
-	            //               + "] Failed to create new connection.\n"
-              std::cerr << "accept new connection failed";
+              std::cerr << "[Failed][Connection][Server:"
+                      + m_server_configs_[curr_event->ident].get_m_server_name
+                      + "] Host: "
+                      + m_server_configs_[curr_event->ident].get_m_host
+                      + "] Failed to create new connection.\n";
               continue;
             }
             break;
@@ -143,17 +144,28 @@ void ServerManager::runServers(void) {
 
             try {
               connection_to_run.RunRecvAndSolve();
-            } //catch(Server::IOError& e) {
-            //   ft::log(ServerManager::log_fd, ft::getTimestamp() + e.location() + std::string("\n"));
-            //   closeConnection(fd);
-            // } catch (...) {
-            //   ft::log(ServerManager::log_fd, ft::getTimestamp() + "detected some error" + std::string("\n"));
-            //   closeConnection(fd);
-            // }
+            } /* catch(Server::IOError& e) {
+              ft::log(ServerManager::log_fd, ft::getTimestamp() + e.location() + std::string("\n"));
+              closeConnection(fd);
+            } catch (...) {
+              ft::log(ServerManager::log_fd, ft::getTimestamp() + "detected some error" + std::string("\n"));
+              closeConnection(fd);
+            } */
             catch(...){}
+          }
+          case FD_CGI: {
+            break;
           }
         }
       } else if (curr_event->filter == EVFILT_WRITE) {
+        switch (m_fd_set_[curr_event->ident]) {
+          case FD_CLIENT: {
+            break;
+          }
+          case FD_CGI: {
+            break;
+          }
+        }
       }
     }
     usleep(5);
@@ -180,6 +192,37 @@ void ServerManager::openLog(void) {
   std::string log_path = "log/" + date + "_log";
   if ((ServerManager::log_fd = open(log_path.c_str(), O_WRONLY | O_CREAT, O_TRUNC, 0755)) == -1)
     return;
+}
+
+int ServerManager::getUnusedConnectionFd(void) {
+  for (std::map<int, Connection>::iterator it = m_connections_.begin();
+        it != m_connections_.end(); ++it;
+        ++it) {
+    if (it->second.get_m_status() == Connection::ON_WAIT)
+      return it->first;
+  }
+  return -1;
+}
+
+void ServerManager::closeConnection(int client_fd) {
+  writeCloseConnectionLog_(client_fd);
+  if (close(client_fd) == -1)
+    ft::log(ServerManager::log_fd,
+            "[Failed]close function failed in closeConnection");
+  this->changeEvents_(m_change_list_, client_fd, EVFILT_READ, EV_DELETE, 0, 0, NULL);
+
+  int cgi_read_fd = m_connections_[client_fd].get_m_read_from_server_fd();
+  int cgi_write_fd = m_connections_[client_fd].get_m_write_to_server_fd();
+
+  if (cgi_read_fd > 0) {
+    this->changeEvents_(m_change_list_, cgi_read_fd, EVFILT_READ, EV_DELETE, 0, 0, NULL);
+    close(cgi_read_fd);
+  }
+  if (cgi_write_fd > 0) {
+    this->changeEvents_(m_change_list_, cgi_write_fd, EVFILT_WRITE, EV_DELETE, 0, 0, NULL);
+    close(cgi_write_fd);
+  }
+  m_connections_.erase(client_fd);
 }
 
 void ServerManager::addServer_(ServerConfig new_server) {
@@ -251,7 +294,9 @@ bool ServerManager::acceptNewConnection_(int server_socket_fd) {
             0, 0, NULL);
   client_ip = ft::inet_ntoa(client_addr.sin_addr.s_addr);
   client_port = static_cast<int>(client_addr.sin_port);
-  m_connections_[client_fd] = Connection(client_fd, client_ip, client_port);
+  m_connections_[client_fd] =
+    Connection(this, &this->m_server_configs_[server_socket_fd],
+                client_fd, client_ip, client_port);
   insertFd(client_fd, FD_CLIENT);
   return true;
 }
@@ -259,7 +304,13 @@ bool ServerManager::acceptNewConnection_(int server_socket_fd) {
 void ServerManager::writeCreateServerLog_(void) {
   std::string msg = "[Created][Servers]" + ft::to_string(m_server_configs_.size()) + " servers created successfully.\n";
 	ft::log(ServerManager::log_fd, msg);
-	return ;
+}
+
+void ServerManager::writeCloseConnectionLog_(int client_fd) {
+	std::string text = "[Deleted][Connection][Server:" + \
+  m_connections_[client_fd].get_m_server_config()->get_m_server_name() + "][CFD:" \
+	+ ft::to_string(client_fd) + "] Connection closed.\n";
+	ft::log(ServerManager::log_fd, text);
 }
 
 namespace {
@@ -385,10 +436,10 @@ bool ServerManager::isValidServerBlock_(std::string& server_block){
   if (header_limit < REQUEST_HEADER_LIMIT_SIZE_MIN || header_limit > REQUEST_HEADER_LIMIT_SIZE_MAX)
     return (false);
 
-  // int fd;
-  // if ((fd = open(map_block.find(key[4])->second.c_str(), O_RDONLY)) == -1)
-  //   return (false);
-  // close(fd);
+  int fd;
+  if ((fd = open(map_block.find(key[4])->second.c_str(), O_RDONLY)) == -1)
+    return (false);
+  close(fd);
 
   int body_limit = std::atoi(map_block.find(key[5])->second.c_str());
   if (body_limit < 0 || body_limit > LIMIT_CLIENT_BODY_SIZE_MAX)

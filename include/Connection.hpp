@@ -6,7 +6,7 @@
 /*   By: jihoolee <jihoolee@student.42SEOUL.kr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/18 21:23:44 by jihoolee          #+#    #+#             */
-/*   Updated: 2022/05/31 20:09:21 by jihoolee         ###   ########.fr       */
+/*   Updated: 2022/06/03 21:18:49 by jihoolee         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -33,6 +33,7 @@ typedef std::vector<std::string> headers_t;
 
 class WebservConfig;
 class ServerConfig;
+class ServerManager;
 
 class Connection {
  public:
@@ -40,7 +41,8 @@ class Connection {
 
   /* Connection constructor & destructor */
   Connection(void);
-  Connection(int client_fd, std::string& client_ip, int client_port);
+  Connection(ServerManager* sm, ServerConfig* sc, int client_fd,
+              std::string& client_ip, int client_port);
   Connection(const Connection &c);
 
   Connection &operator=(const Connection &operand);
@@ -48,11 +50,15 @@ class Connection {
   ~Connection(void);
 
   /* getter function */
+  ServerConfig* get_m_server_config() const;
   Status      get_m_status() const;
   int         get_m_client_fd() const;
   timeval    get_m_last_request_at() const;
   std::string get_m_client_ip() const;
   int         get_m_client_port() const;
+
+  int         get_m_read_from_server_fd() const;
+  int         get_m_write_to_server_fd() const;
 
   int                get_m_readed_size() const;
   std::string        get_m_read_buffer_client() const;
@@ -64,6 +70,10 @@ class Connection {
   void  set_m_last_request_at();
   void set_m_client_ip(std::string ip);
   void set_m_client_port(int port);
+
+  void set_m_read_from_server_fd(int fd);
+  void set_m_write_to_server_fd(int fd);
+
   void set_m_readed_size(int size);
   void set_m_read_buffer_client(std::string read_buffer);
 
@@ -106,6 +116,7 @@ class Connection {
   void ExecuteDelete(const Request& request);
 
  private:
+  ServerManager*  m_server_manager_;
   WebservConfig*  m_webserv_config_;
   ServerConfig*   m_server_config_;
 

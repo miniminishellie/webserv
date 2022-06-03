@@ -6,7 +6,7 @@
 /*   By: jihoolee <jihoolee@student.42SEOUL.kr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/20 22:17:14 by bylee             #+#    #+#             */
-/*   Updated: 2022/06/01 14:43:34 by jihoolee         ###   ########.fr       */
+/*   Updated: 2022/06/03 16:49:52 by jihoolee         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -47,13 +47,15 @@ class ServerManager {
   /*
   ServerManager constructor & destructor declaration
   */
-  enum FdType { FD_SERVER, FD_CLIENT };
+  enum FdType { FD_SERVER, FD_CLIENT, FD_CGI};
   ServerManager();
   ServerManager(const ServerManager& ref);
 
   virtual ~ServerManager();
 
   ServerManager& operator=(const ServerManager& ref);
+
+  WebservConfig get_m_config() const;
 
   void  createServers(const std::string& config_file_path, char* env[]);
   void  exitWebserv(const std::string& error_message);
@@ -67,6 +69,8 @@ class ServerManager {
                     void* udata);
 
   void  openLog(void);
+  int   getUnusedConnectionFd(void);
+  void  closeConnection(int client_fd);
 
  private:
   void  addServer_(ServerConfig new_server);
@@ -81,6 +85,7 @@ class ServerManager {
   bool  acceptNewConnection_(int server_socket_fd);
 
   void  writeCreateServerLog_(void);
+  void  writeCloseConnectionLog_(int client_fd);
 
   bool  splitConfigString_(std::string& config_string,
           std::string& config_block,

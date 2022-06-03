@@ -6,47 +6,107 @@
 /*   By: jihoolee <jihoolee@student.42SEOUL.kr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/25 21:44:42 by jihoolee          #+#    #+#             */
-/*   Updated: 2022/05/31 20:38:58 by jihoolee         ###   ########.fr       */
+/*   Updated: 2022/06/03 21:20:20 by jihoolee         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "Connection.hpp"
 #include "ServerConfig.hpp"
 #include "WebservConfig.hpp"
+#include "ServerManager.hpp"
 #include "Libft.hpp"
 
-Connection::Connection(void) {}
+Connection::Connection(void)
+    : m_server_manager_(NULL),
+      m_webserv_config_(NULL),
+      m_server_config_(NULL),
+      m_status_(ON_WAIT),
+      m_client_fd_(-1),
+      m_client_ip_(),
+      m_client_port_(-1),
+      m_read_from_server_fd_(-1),
+      m_write_to_server_fd_(-1),
+      m_wbuf_(),
+      m_readed_size_(0),
+      m_read_buffer_client_(),
+      m_request_(),
+      m_response_() {
+  this->m_last_request_at_.tv_sec = 0;
+  this->m_last_request_at_.tv_usec = 0;
+  set_m_last_request_at();
+}
+
+Connection::Connection(ServerManager* sm, ServerConfig* sc, int client_fd,
+              std::string& client_ip, int client_port)
+    : m_server_manager_(sm),
+      m_webserv_config_(&sm->get_m_config()),
+      m_server_config_(sc),
+      m_status_(ON_WAIT),
+      m_client_fd_(client_fd),
+      m_client_ip_(client_ip),
+      m_client_port_(client_port),
+      m_read_from_server_fd_(-1),
+      m_write_to_server_fd_(-1),
+      m_wbuf_(),
+      m_readed_size_(0),
+      m_read_buffer_client_(),
+      m_request_(),
+      m_response_() {
+  this->m_last_request_at_.tv_sec = 0;
+  this->m_last_request_at_.tv_usec = 0;
+  set_m_last_request_at();
+}
 
 Connection::Connection(const Connection &c)
-    : m_status_(c.m_status_),
+    : m_server_manager_(c.m_server_manager_),
+      m_webserv_config_(c.m_webserv_config_),
+      m_server_config_(c.m_server_config_),
+      m_status_(c.m_status_),
       m_client_fd_(c.m_client_fd_),
       m_last_request_at_(c.m_last_request_at_),
       m_client_ip_(c.m_client_ip_),
       m_client_port_(c.m_client_port_),
+      m_read_from_server_fd_(c.m_read_from_server_fd_),
+      m_write_to_server_fd_(c.m_write_to_server_fd_),
+      m_wbuf_(c.m_wbuf_),
       m_readed_size_(c.m_readed_size_),
       m_read_buffer_client_(c.m_read_buffer_client_),
-      m_request_(c.m_request_) {}
+      m_request_(c.m_request_),
+      m_response_(c.m_response_) {
+}
 
 Connection &Connection::operator=(const Connection &operand) {
+  if (this == &operand)
+    return *this;
+  m_server_manager_ = operand.m_server_manager_;
+  m_webserv_config_ = operand.m_webserv_config_;
+  m_server_config_ = operand.m_server_config_;
   m_status_ = operand.m_status_;
   m_client_fd_ = operand.m_client_fd_;
   m_last_request_at_ = operand.m_last_request_at_;
   m_client_ip_ = operand.m_client_ip_;
   m_client_port_ = operand.m_client_port_;
+  m_read_from_server_fd_ = operand.m_read_from_server_fd_;
+  m_write_to_server_fd_ = operand.m_write_to_server_fd_;
+  m_wbuf_ = operand.m_wbuf_;
   m_readed_size_ = operand.m_readed_size_;
   m_read_buffer_client_ = operand.m_read_buffer_client_;
   m_request_ = operand.m_request_;
+  m_response_ = operand.m_response_;
   return *this;
 }
 
 Connection::~Connection(void) {}
 
 /*getter function*/
+ServerConfig* Connection::get_m_server_config() const { return m_server_config_; }
 Connection::Status Connection::get_m_status() const { return m_status_; }
 int Connection::get_m_client_fd() const { return m_client_fd_; }
 timeval Connection::get_m_last_request_at() const { return m_last_request_at_; }
 std::string Connection::get_m_client_ip() const { return m_client_ip_; }
 int Connection::get_m_client_port() const { return m_client_port_; }
+int Connection::get_m_read_from_server_fd() const { return m_read_from_server_fd_; }
+int Connection::get_m_write_to_server_fd() const { return m_write_to_server_fd_; }
 int Connection::get_m_readed_size() const { return m_readed_size_; }
 std::string Connection::get_m_read_buffer_client() const { return m_read_buffer_client_; }
 const Request& Connection::get_m_request() const { return m_request_; }
@@ -56,6 +116,8 @@ void Connection::set_m_status(Status status) { m_status_ = status; }
 void Connection::set_m_client_fd(int fd) { m_client_fd_ = fd; }
 void Connection::set_m_client_ip(std::string ip) { m_client_ip_ = ip; }
 void Connection::set_m_client_port(int port) { m_client_port_ = port; }
+void Connection::set_m_read_from_server_fd(int fd) { m_read_from_server_fd_ = fd; }
+void Connection::set_m_write_to_server_fd(int fd) { m_write_to_server_fd_ = fd; }
 void Connection::set_m_readed_size(int size) { m_readed_size_ = size; }
 void Connection::set_m_read_buffer_client(std::string read_buffer) { m_read_buffer_client_ = read_buffer; }
 
@@ -167,7 +229,8 @@ std::string Connection::GetCGIEnvValue(const Request& request, std::string token
     return m_webserv_config_->get_m_software_name() + "/" + m_webserv_config_->get_m_software_version();
   else if (token == "GATEWAY_INTERFACE")
     return m_webserv_config_->get_m_cgi_version();
-  return NULL;
+  else
+    throw 400;
 }
 
 bool Connection::ParseStartLine() {
@@ -180,7 +243,7 @@ bool Connection::ParseStartLine() {
     return true;
   }
   else if (m_read_buffer_client_.size() > m_server_config_->get_m_request_uri_size_limit())
-    std::cout << "URI SIZE ERROR" << std::endl;
+    std::cout << "URI SIZE ERROR" << std::endl;  //  throw 40006
   return false;
 }
 
@@ -201,8 +264,11 @@ int Connection::RecvWithoutBody(char *buf, int buf_size) {
   }
   if (recv_len  == -1)
     std::cout << "IO error detected to read reqeust message without body for client/\n";
+    // throw (Server::IOError((("IO error detected to read reqeust message without body for client ") + ft::to_string(connection.get_m_client_fd())).c_str()));
   else
     std::cout << "Connection close detected by client/\n";
+		// throw (Server::IOError((("Connection close detected by client ") + ft::to_string(connection.get_m_client_fd())).c_str()));
+
   return -1;
 }
 
@@ -273,6 +339,7 @@ int Connection::RecvBody(char *buf, int buf_size) {
     return read_size;
   else if (read_size == -1) {
     std::cout << "IO error detected to read reqeust message without body for client " << std::endl; // throw (Server::IOError((("IO error detected to read reqeust message without body for client ") + ft::to_string(connection.get_m_client_fd())).c_str()));
+		// throw (Server::IOError((("IO error detected to read reqeust message without body for client ") + ft::to_string(connection.get_m_client_fd())).c_str()));
     return -1;
   }
   else {
@@ -565,7 +632,7 @@ int GetValidIndexFd(const Request& request) {
 
 char** Connection::CreateCGIEnv(const Request& request) {
   char **env = DupBaseEnvWithExtraSpace(request);
-  int idx = ft::lenDoubleStr(m_webservconfig_->get_m_base_env());
+  int idx = ft::lenDoubleStr(m_webserv_config_->get_m_base_env());
   SetEnv(env, idx++, "AUTH_TYPE", "");
   SetEnv(env, idx++, "CONTENT_LENGTH", GetCGIEnvValue(request, "CONTENT_LENGTH"));
   SetEnv(env, idx++, "CONTENT_TYPE", GetCGIEnvValue(request, "CONTENT_TYPE"));
@@ -621,7 +688,7 @@ void Connection::ExecuteGet(const Request& request) {
   std::string body;
 
   try {
-    body = ft::getStringFromFile(path, m_serverconfig_->get_m_client_body_size_limit());
+    body = ft::getStringFromFile(path, m_server_config_->get_m_client_body_size_limit());
   } catch (std::overflow_error& e) {
     return CreateResponse(41304);
   }
@@ -706,8 +773,7 @@ void Connection::ExecutePost(const Request& request) {
     return CreateResponse(40023);
 }
 
-void Connection::SolveRequest(const Request& request)
-{
+void Connection::SolveRequest(const Request& request) {
   LocationConfig* locationconfig = request.get_m_locationconfig();
   Request::Method method = request.get_m_method();
   std::string methodString = request.get_m_method_to_string();
@@ -753,7 +819,7 @@ void Connection::WriteCreateNewRequestLog(const Request& request)
   if (request.get_m_method() != Request::POST)
     return ;
   int cfd = request.get_m_connection()->get_m_client_fd();
-  std::string text = ft::getTimestamp() + "[Created][Request][Server:" + m_serverconfig_->get_m_server_name() + "]"
+  std::string text = ft::getTimestamp() + "[Created][Request][Server:" + m_server_config_->get_m_server_name() + "]"
   + "[CFD:" + ft::to_string(cfd) + "][Method:" \
   + request.get_m_method_to_string() + "][URI:" + request.get_m_uri() + "]";
   if (request.get_m_method() == Request::GET)
