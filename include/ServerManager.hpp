@@ -6,7 +6,7 @@
 /*   By: jihoolee <jihoolee@student.42SEOUL.kr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/20 22:17:14 by bylee             #+#    #+#             */
-/*   Updated: 2022/06/03 16:49:52 by jihoolee         ###   ########.fr       */
+/*   Updated: 2022/06/04 17:43:16 by jihoolee         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -72,6 +72,22 @@ class ServerManager {
   int   getUnusedConnectionFd(void);
   void  closeConnection(int client_fd);
 
+  class IOError: public std::exception{
+   public:
+    IOError() throw();
+    IOError(const char* msg) throw();
+    IOError(const IOError& ioe) throw();
+
+    virtual ~IOError() throw();
+
+    IOError& operator=(const IOError& operand) throw();
+
+    virtual const char* what() const throw();
+    std::string location() const throw();
+   private:
+    std::string m_msg_;
+  };  //  class IOError
+
  private:
   void  addServer_(ServerConfig new_server);
   void  changeSignal_(int sig);
@@ -99,8 +115,6 @@ class ServerManager {
   WebservConfig                       m_config_;
   std::map<int, ServerConfig>         m_server_configs_;
   std::map<int, Connection>           m_connections_;
-//   std::map<int, Server>       m_servers_;
-//   std::vector<Server>         m_servers_;
 
   int                                 m_kqueue_;
   std::map<int, FdType>               m_fd_set_;  //  ->필요한지 한번 생각해보자

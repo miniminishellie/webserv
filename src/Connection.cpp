@@ -6,7 +6,7 @@
 /*   By: jihoolee <jihoolee@student.42SEOUL.kr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/25 21:44:42 by jihoolee          #+#    #+#             */
-/*   Updated: 2022/06/03 21:20:20 by jihoolee         ###   ########.fr       */
+/*   Updated: 2022/06/04 20:48:28 by jihoolee         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -243,7 +243,7 @@ bool Connection::ParseStartLine() {
     return true;
   }
   else if (m_read_buffer_client_.size() > m_server_config_->get_m_request_uri_size_limit())
-    std::cout << "URI SIZE ERROR" << std::endl;  //  throw 40006
+    throw 40006;
   return false;
 }
 
@@ -263,12 +263,13 @@ int Connection::RecvWithoutBody(char *buf, int buf_size) {
         return i + 4;
   }
   if (recv_len  == -1)
-    std::cout << "IO error detected to read reqeust message without body for client/\n";
-    // throw (Server::IOError((("IO error detected to read reqeust message without body for client ") + ft::to_string(connection.get_m_client_fd())).c_str()));
+    throw ServerManager::IOError(
+      ("IO error detected to read reqeust message without body for client "
+        + ft::to_string(m_client_fd_)).c_str());
   else
-    std::cout << "Connection close detected by client/\n";
-		// throw (Server::IOError((("Connection close detected by client ") + ft::to_string(connection.get_m_client_fd())).c_str()));
-
+    throw ServerManager::IOError(
+      ("Connection close detected by client "
+        + ft::to_string(m_client_fd_)).c_str());
   return -1;
 }
 
@@ -302,24 +303,21 @@ bool Connection::ParseHeader() {
   //   return false;
   // }
   // return true;
+  // previous pureum code
   while(ft::getLine(read_buf, line, m_server_config_->get_m_request_header_size_limit()) >= 0) {
     if (line == "") {
-      if (!ft::hasKey(m_request_.get_m_headers(), "Host")) {
-        std::cout << "Error: Header is not Valid" << std::endl; //throw 40010
-        return false;
-      }
+      if (!ft::hasKey(m_request_.get_m_headers(), "Host"))
+        throw 40010;
       return true;
     }
-    if (IsValidHeader(line)) {
-      std::cout << "Error: Header is not Valid" << std::endl; //throw 40010
-      return false;
-    }
+    if (IsValidHeader(line))
+      throw 40010;
     m_request_.AddHeader(line);
   }
   return false;
 }
 
-bool Connection::IsRequestHasBody() {
+bool Connection::IsRequestHasBody() {  // 수정 필요함
   if (m_request_.get_m_method() == Request::POST) {
     if (m_request_.get_m_transfer_type() == Request::CHUNKED)
       return true;
@@ -337,16 +335,14 @@ int Connection::RecvBody(char *buf, int buf_size) {
     return 0;
   if ((read_size = recv(m_client_fd_, buf, buf_size, 0)) > 0)
     return read_size;
-  else if (read_size == -1) {
-    std::cout << "IO error detected to read reqeust message without body for client " << std::endl; // throw (Server::IOError((("IO error detected to read reqeust message without body for client ") + ft::to_string(connection.get_m_client_fd())).c_str()));
-		// throw (Server::IOError((("IO error detected to read reqeust message without body for client ") + ft::to_string(connection.get_m_client_fd())).c_str()));
-    return -1;
-  }
-  else {
-    std::cout <<"Connection close detected by client " << std::endl; //throw (Server::IOError((("Connection close detected by client ") + ft::to_string(connection.get_m_client_fd())).c_str()));
-    return -1;
-  }
-
+  else if (read_size == -1)
+    throw ServerManager::IOError(
+      ("IO error detected to read request message without body for client "
+        + ft::to_string(m_client_fd_)).c_str());
+  else
+    throw ServerManager::IOError(
+      ("Connection close detected by client "
+      + ft::to_string(m_client_fd_)).c_str());
   // if ((read_size = read(fd, buf, BUFFER_SIZE)) > 0) {
   //   while(i < read_size) {
   //     if (buf[i] == '\r' && i + 3 < read_size && buf[i + 1] == '\n' && buf[i + 2] == '\r' && buf[i + 3] == '\n')
@@ -364,19 +360,20 @@ int Connection::RecvBody(char *buf, int buf_size) {
 
 bool Connection::ReadGeneralBody() {
   if (!ft::hasKey(m_request_.get_m_headers(), "Content-Length"))
-    std::cout << "Content-Lenth required" << std::endl; //throw 41101
-  if (m_readed_size_ + static_cast<int>(m_read_buffer_client_.size()) <= m_request_.get_m_content_length()) {
+    throw 41101;
+  int content_length = m_request_.get_m_content_length();
+
+  if (m_readed_size_ + static_cast<int>(m_read_buffer_client_.size()) <= content_length) {
     m_request_.AddContent(m_read_buffer_client_);
     m_readed_size_ += m_read_buffer_client_.size();
     m_read_buffer_client_ =  m_read_buffer_client_.erase(0, m_read_buffer_client_.size());
-  }
-  else {
-    std::string part = m_read_buffer_client_.substr(0, m_request_.get_m_content_length() - m_readed_size_);
+  } else {
+    std::string part = m_read_buffer_client_.substr(0, content_length - m_readed_size_);
     m_request_.AddContent(part);
      m_read_buffer_client_ =  m_read_buffer_client_.erase(0, m_read_buffer_client_.size());
-    m_readed_size_ = m_request_.get_m_content_length();
+    m_readed_size_ = content_length;
   }
-  return m_readed_size_ == m_request_.get_m_content_length();
+  return m_readed_size_ == content_length;
 }
 
 int Connection::getChunkedSize(std::string& str, std::string& len) {
@@ -413,14 +410,14 @@ bool Connection::ReadChunkedBody() {
         m_read_buffer_client_ =  m_read_buffer_client_.erase(0, 2);
         return true;
       }
-        std::cout << "In chunked request, for of end-line is not '\\r\\n" << std::endl; //throw (40018);
+      throw 40018;
     }
     if (m_read_buffer_client_.size() < content_length + 2) {
       m_read_buffer_client_.insert(0, len + "\r\n");
       return false;
     }
     if (m_read_buffer_client_.substr(content_length, 2) != "\r\n")
-      std::cout << "In chunked request, readed-size and content-length value is not equal" << std::endl; //throw (40021);
+      throw 40021;
     m_request_.AddContent(m_read_buffer_client_.substr(0, content_length));
     m_read_buffer_client_ = m_read_buffer_client_.erase(0, content_length + 2);
   }
@@ -835,16 +832,17 @@ bool Connection::RunRecvAndSolve() {
   } catch (int status_code) {
     CreateResponse(status_code);
     return true;
-  } /*catch (Server::IOError& e) {
+  } catch (ServerManager::IOError& e) {
     throw (e);
-  } */catch (std::exception& e) {
-    ft::log(ServerManager::log_fd, std::string("[Failed][Request] Failed to create request because ") + e.what());
+  }catch (std::exception& e) {
+    ft::log(ServerManager::log_fd,
+      std::string("[Failed][Request] Failed to create request because ")
+        + e.what());
     CreateResponse(50001);
     return true;
   }
-  const Request& request = m_request_;
-  if (request.get_m_phase() == Request::COMPLETE) {
-    WriteCreateNewRequestLog(request);
+  if (m_request_.get_m_phase() == Request::COMPLETE) {
+    WriteCreateNewRequestLog(m_request_);
     m_status_ = ON_EXECUTE;
     SolveRequest(m_request_);
     return true;

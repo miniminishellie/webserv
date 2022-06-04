@@ -6,7 +6,7 @@
 /*   By: jihoolee <jihoolee@student.42SEOUL.kr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/17 18:42:34 by jihoolee          #+#    #+#             */
-/*   Updated: 2022/06/03 21:33:48 by jihoolee         ###   ########.fr       */
+/*   Updated: 2022/06/04 17:43:05 by jihoolee         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -58,6 +58,33 @@ ServerManager& ServerManager::operator=(const ServerManager& ref) {
 
 WebservConfig ServerManager::get_m_config() const {
   return m_config_;
+}
+
+ServerManager::IOError::IOError() throw() : std::exception() {}
+
+ServerManager::IOError::IOError(const char* msg) throw(): std::exception() {
+  m_msg_ = std::string(msg);
+}
+
+ServerManager::IOError::IOError(const IOError& ioe) throw(): std::exception() {
+  m_msg_ = ioe.m_msg_;
+}
+
+ServerManager::IOError::~IOError() throw(){}
+
+ServerManager::IOError& ServerManager::IOError::operator=(
+    const ServerManager::IOError& operand) throw() {
+  if (this != &operand)
+    m_msg_ = operand.m_msg_;
+  return *this;
+}
+
+const char* ServerManager::IOError::what() const throw() {
+  return "read/write operation return fail:";
+}
+
+std::string ServerManager::IOError::location() const throw() {
+  return "read/write operation return fail: " + m_msg_;
 }
 
 bool  g_is_running;
@@ -140,18 +167,20 @@ void ServerManager::runServers(void) {
             break;
           }
           case FD_CLIENT: {
-            Connection& connection_to_run = m_connections_[curr_event->ident];
+            Connection& curr_connection = m_connections_[curr_event->ident];
+            Connection::Status connection_status = curr_connection.get_m_status();
 
             try {
-              connection_to_run.RunRecvAndSolve();
-            } /* catch(Server::IOError& e) {
+              if (connection_status == Connection::ON_WAIT ||
+                  connection_status == Connection::ON_RECV)
+                curr_connection.RunRecvAndSolve();
+            } catch(ServerManager::IOError& e) {
               ft::log(ServerManager::log_fd, ft::getTimestamp() + e.location() + std::string("\n"));
-              closeConnection(fd);
+              closeConnection(curr_event->ident);
             } catch (...) {
               ft::log(ServerManager::log_fd, ft::getTimestamp() + "detected some error" + std::string("\n"));
-              closeConnection(fd);
-            } */
-            catch(...){}
+              closeConnection(curr_event->ident);
+            }
           }
           case FD_CGI: {
             break;
@@ -160,6 +189,21 @@ void ServerManager::runServers(void) {
       } else if (curr_event->filter == EVFILT_WRITE) {
         switch (m_fd_set_[curr_event->ident]) {
           case FD_CLIENT: {
+            Connection& curr_connection = m_connections_[curr_event->ident];
+            Connection::Status connection_status = curr_connection.get_m_status();
+
+            try {
+              if (connection_status == Connection::TO_SEND ||
+                  connection_status == Connection::ON_SEND);
+                // curr_connection.runSend();
+            }/* catch(Server::IOError& e) {
+              ft::log(ServerManager::log_fd, ft::getTimestamp() + e.location() + std::string("\n"));
+              closeConnection(fd);
+            } catch (...) {
+              ft::log(ServerManager::log_fd, ft::getTimestamp() + "detected some error" + std::string("\n"));
+              closeConnection(fd);
+            } */
+            catch(...){}
             break;
           }
           case FD_CGI: {
@@ -196,7 +240,7 @@ void ServerManager::openLog(void) {
 
 int ServerManager::getUnusedConnectionFd(void) {
   for (std::map<int, Connection>::iterator it = m_connections_.begin();
-        it != m_connections_.end(); ++it;
+        it != m_connections_.end();
         ++it) {
     if (it->second.get_m_status() == Connection::ON_WAIT)
       return it->first;
