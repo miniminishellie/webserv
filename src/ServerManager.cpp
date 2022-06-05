@@ -6,7 +6,7 @@
 /*   By: jihoolee <jihoolee@student.42SEOUL.kr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/17 18:42:34 by jihoolee          #+#    #+#             */
-/*   Updated: 2022/06/04 17:43:05 by jihoolee         ###   ########.fr       */
+/*   Updated: 2022/06/06 01:28:51 by jihoolee         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -124,11 +124,18 @@ void ServerManager::createServers(const std::string& config_file_path, char* env
 
 void ServerManager::exitWebserv(const std::string& what) {
   std::cerr << what << std::endl;
+  close(ServerManager::log_fd);
   exit(EXIT_SUCCESS);
 }
 
+void changeSignal(int sig) {
+  (void)sig;
+  ft::log(ServerManager::log_fd, "signal execute");
+  g_is_running = false;
+}
+
 void ServerManager::runServers(void) {
-  signal(SIGINT, this->changeSignal_);
+  signal(SIGINT, changeSignal);
   g_is_running = true;
 
   int new_events;
@@ -158,9 +165,9 @@ void ServerManager::runServers(void) {
             }
             if (!acceptNewConnection_(curr_event->ident)) {
               std::cerr << "[Failed][Connection][Server:"
-                      + m_server_configs_[curr_event->ident].get_m_server_name
+                      + m_server_configs_[curr_event->ident].get_m_server_name()
                       + "] Host: "
-                      + m_server_configs_[curr_event->ident].get_m_host
+                      + m_server_configs_[curr_event->ident].get_m_host()
                       + "] Failed to create new connection.\n";
               continue;
             }
@@ -195,15 +202,14 @@ void ServerManager::runServers(void) {
             try {
               if (connection_status == Connection::TO_SEND ||
                   connection_status == Connection::ON_SEND);
-                // curr_connection.runSend();
-            }/* catch(Server::IOError& e) {
+                curr_connection.runSend();
+            } catch(ServerManager::IOError& e) {
               ft::log(ServerManager::log_fd, ft::getTimestamp() + e.location() + std::string("\n"));
-              closeConnection(fd);
+              closeConnection(curr_event->ident);
             } catch (...) {
               ft::log(ServerManager::log_fd, ft::getTimestamp() + "detected some error" + std::string("\n"));
-              closeConnection(fd);
-            } */
-            catch(...){}
+              closeConnection(curr_event->ident);
+            }
             break;
           }
           case FD_CGI: {
@@ -294,12 +300,6 @@ void ServerManager::addServer_(ServerConfig new_server) {
   changeEvents_(m_change_list_, server_socket_fd, EVFILT_READ,
                   EV_ADD | EV_ENABLE, 0, 0, NULL);
   insertFd(server_socket_fd, FD_SERVER);
-}
-
-void ServerManager::changeSignal_(int sig) {
-  (void)sig;
-  g_is_running = false;
-  ft::log(ServerManager::log_fd, "signal execute");
 }
 
 void ServerManager::changeEvents_(std::vector<struct kevent>& change_list,

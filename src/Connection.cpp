@@ -6,7 +6,7 @@
 /*   By: jihoolee <jihoolee@student.42SEOUL.kr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/25 21:44:42 by jihoolee          #+#    #+#             */
-/*   Updated: 2022/06/04 20:48:28 by jihoolee         ###   ########.fr       */
+/*   Updated: 2022/06/06 01:29:36 by jihoolee         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -27,6 +27,8 @@ Connection::Connection(void)
       m_read_from_server_fd_(-1),
       m_write_to_server_fd_(-1),
       m_wbuf_(),
+      m_wbuf_data_size_(0),
+      m_send_data_size_(0),
       m_readed_size_(0),
       m_read_buffer_client_(),
       m_request_(),
@@ -48,6 +50,8 @@ Connection::Connection(ServerManager* sm, ServerConfig* sc, int client_fd,
       m_read_from_server_fd_(-1),
       m_write_to_server_fd_(-1),
       m_wbuf_(),
+      m_wbuf_data_size_(0),
+      m_send_data_size_(0),
       m_readed_size_(0),
       m_read_buffer_client_(),
       m_request_(),
@@ -69,6 +73,8 @@ Connection::Connection(const Connection &c)
       m_read_from_server_fd_(c.m_read_from_server_fd_),
       m_write_to_server_fd_(c.m_write_to_server_fd_),
       m_wbuf_(c.m_wbuf_),
+      m_wbuf_data_size_(c.m_wbuf_data_size_),
+      m_send_data_size_(c.m_send_data_size_),
       m_readed_size_(c.m_readed_size_),
       m_read_buffer_client_(c.m_read_buffer_client_),
       m_request_(c.m_request_),
@@ -89,6 +95,8 @@ Connection &Connection::operator=(const Connection &operand) {
   m_read_from_server_fd_ = operand.m_read_from_server_fd_;
   m_write_to_server_fd_ = operand.m_write_to_server_fd_;
   m_wbuf_ = operand.m_wbuf_;
+  m_wbuf_data_size_ = operand.m_wbuf_data_size_;
+  m_send_data_size_ = operand.m_send_data_size_;
   m_readed_size_ = operand.m_readed_size_;
   m_read_buffer_client_ = operand.m_read_buffer_client_;
   m_request_ = operand.m_request_;
@@ -97,6 +105,19 @@ Connection &Connection::operator=(const Connection &operand) {
 }
 
 Connection::~Connection(void) {}
+
+void Connection::clear() {
+  m_status_ = ON_WAIT;
+  m_read_from_server_fd_ = -1;
+  m_write_to_server_fd_ = -1;
+  m_request_.clear();
+  m_readed_size_ = 0;
+  m_response_.clear();
+  m_read_buffer_client_.clear();  //  TO_CHECK
+  m_wbuf_.clear();
+  m_wbuf_data_size_ = 0;
+  m_send_data_size_ = 0;
+}
 
 /*getter function*/
 ServerConfig* Connection::get_m_server_config() const { return m_server_config_; }
@@ -107,6 +128,8 @@ std::string Connection::get_m_client_ip() const { return m_client_ip_; }
 int Connection::get_m_client_port() const { return m_client_port_; }
 int Connection::get_m_read_from_server_fd() const { return m_read_from_server_fd_; }
 int Connection::get_m_write_to_server_fd() const { return m_write_to_server_fd_; }
+int Connection::get_m_wbuf_data_size() const { return m_wbuf_data_size_; }
+int Connection::get_m_send_data_size() const { return m_send_data_size_; }
 int Connection::get_m_readed_size() const { return m_readed_size_; }
 std::string Connection::get_m_read_buffer_client() const { return m_read_buffer_client_; }
 const Request& Connection::get_m_request() const { return m_request_; }
@@ -118,9 +141,19 @@ void Connection::set_m_client_ip(std::string ip) { m_client_ip_ = ip; }
 void Connection::set_m_client_port(int port) { m_client_port_ = port; }
 void Connection::set_m_read_from_server_fd(int fd) { m_read_from_server_fd_ = fd; }
 void Connection::set_m_write_to_server_fd(int fd) { m_write_to_server_fd_ = fd; }
+void Connection::set_m_wbuf_data_size(int size) { m_wbuf_data_size_ = size; }
+void Connection::set_m_sent_data_size(int size) { m_send_data_size_ = size; }
 void Connection::set_m_readed_size(int size) { m_readed_size_ = size; }
 void Connection::set_m_read_buffer_client(std::string read_buffer) { m_read_buffer_client_ = read_buffer; }
 
+void Connection::set_m_wbuf_for_send(std::string wbuf_string) {
+  if (wbuf_string.empty())
+    m_wbuf_ = m_response_.GetString();
+  else
+    m_wbuf_ = wbuf_string;
+  m_wbuf_data_size_ = m_wbuf_.size();
+  m_send_data_size_ = 0;
+}
 
 /*member function*/
 std::string Connection::GetExtension(std::string path) {
@@ -230,7 +263,7 @@ std::string Connection::GetCGIEnvValue(const Request& request, std::string token
   else if (token == "GATEWAY_INTERFACE")
     return m_webserv_config_->get_m_cgi_version();
   else
-    throw 400;
+    throw 40000;
 }
 
 bool Connection::ParseStartLine() {
@@ -274,14 +307,10 @@ int Connection::RecvWithoutBody(char *buf, int buf_size) {
 }
 
 bool Connection::IsValidHeader(std::string header) {
-  if (header.size() > m_server_config_->get_m_request_header_size_limit()) { //m_server->get_m_request_header_limit_size()
-    std::cout << "Error: Header Size is over than limit size" << std::endl;
-    return false; //throw 40005
-  }
-  if (header.find(":") == std::string::npos) {
-    std::cout << "Error: Header doesn't have\":\"" << std::endl;
+  if (header.size() > m_server_config_->get_m_request_header_size_limit()) //m_server->get_m_request_header_limit_size()
+    throw 40005;
+  if (header.find(":") == std::string::npos)
     return false;
-  }
   return true;
 }
 
@@ -384,14 +413,14 @@ int Connection::getChunkedSize(std::string& str, std::string& len) {
   try {
     content_length = ft::stoi(len, 16);
   } catch (std::exception& e) {
-      std::cout << "In chunked request, failed to convert trnasfer-size(maybe not number)" << std::endl;//throw (40017);
-    }
+      throw 40017;
+  }
   if (content_length < 0)
-    std::cout << "In chunked request, failed to convert trnasfer-size(maybe negative number)" << std::endl; //throw (40016);
+    throw 40016;
   if (content_length == 0) {
     if (len[0] != '0')
-      std::cout << "In chunked request, failed to convert trnasfer-size(maybe not number)" << std::endl;//throw (40017);
-    }
+      throw 40017;
+  }
   return content_length;
 }
 
@@ -770,6 +799,27 @@ void Connection::ExecutePost(const Request& request) {
     return CreateResponse(40023);
 }
 
+namespace {
+bool isAuthorizationRequired(LocationConfig* location) {
+  return !location->get_m_auth_basic_realm().empty();
+}
+
+bool hasCredential(const Request& request) {
+  return ft::hasKey(request.get_m_headers(), "Authorization");
+}
+
+bool isValidCredentialForm(std::vector<std::string> credential) {
+  return (credential.size() == 2 && credential[0] != "basic");
+}
+
+bool isValidCredentialContent(LocationConfig* location,
+                              std::vector<std::string> credential) {
+  std::string key, value;
+
+  return true;
+}
+}  //  anonymous namespace
+
 void Connection::SolveRequest(const Request& request) {
   LocationConfig* locationconfig = request.get_m_locationconfig();
   Request::Method method = request.get_m_method();
@@ -848,4 +898,47 @@ bool Connection::RunRecvAndSolve() {
     return true;
   }
   return false;
+}
+
+bool Connection::runSend() {
+  Connection::Status status = m_status_;
+  int fd = m_client_fd_;
+
+  if (status == Connection::TO_SEND) {
+    set_m_wbuf_for_send();
+    m_status_ = ON_SEND;
+  }
+  sendFromWbuf();
+  if (m_wbuf_data_size_ == m_send_data_size_) {
+    m_status_ = ON_WAIT;
+    m_server_manager_->addEvent(m_client_fd_, EVFILT_WRITE, EV_DELETE, 0, 0, NULL);
+    writeSendResponseLog(m_response_);
+    if (m_response_.get_m_status_code() / 100 != 2)
+      throw ServerManager::IOError("send error response.");
+    else
+      this->clear();
+  }
+  return m_wbuf_data_size_ == m_send_data_size_;
+}
+
+void Connection::sendFromWbuf() {
+  int count = m_wbuf_data_size_ - m_send_data_size_;
+
+  if (count > BUFFER_SIZE)
+    count = BUFFER_SIZE;
+  count = send(m_client_fd_, m_wbuf_.c_str() + m_send_data_size_, count, 0);
+  if (count == 0 || count == -1)
+    throw ServerManager::IOError(
+      ("IOError detected to send respoonse message to cient"
+      + ft::to_string(m_client_fd_)).c_str());
+  m_send_data_size_ += count;
+}
+
+void Connection::writeSendResponseLog(const Response& response) {
+  std::string text = ft::getTimestamp() + "[Sended][Response][Server:" + m_server_config_->get_m_server_name() + "][" \
+  + ft::to_string(response.get_m_status_code()) + "][" + response.get_m_status_description() + "][CFD:" \
+  + ft::to_string(response.get_m_connection()->get_m_client_fd()) + "][headers:" \
+  + ft::to_string(response.get_m_headers().size()) + "][body:" + ft::to_string(response.get_m_content().size()) + "]";
+  text.append(" Response sended\n");
+  ft::log(ServerManager::log_fd, text);
 }

@@ -6,7 +6,7 @@
 /*   By: jihoolee <jihoolee@student.42SEOUL.kr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/21 15:38:35 by jihoolee          #+#    #+#             */
-/*   Updated: 2022/05/25 17:42:04 by jihoolee         ###   ########.fr       */
+/*   Updated: 2022/06/05 21:39:42 by jihoolee         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -32,8 +32,8 @@ class LocationConfig {
 
   std::string                               get_m_uri() const;
   std::string                               get_m_root_path() const;
-  // std::string                               get_m_auth_basic_realm() const;
-  // const std::map<std::string, std::string>& get_m_auth_basic_file() const;
+  std::string                               get_m_auth_basic_realm() const;
+  const std::map<std::string, std::string>& get_m_auth_basic_file() const;
   std::set<std::string>                     get_m_allow_method() const;
   const std::set<std::string>&              get_m_index() const;
   const std::set<std::string>&              get_m_cgi() const;
@@ -44,8 +44,8 @@ class LocationConfig {
  private:
   std::string                         m_uri_;
   std::string                         m_root_path_;
-  // std::string                         m_auth_basic_realm_;
-  // std::map<std::string, std::string>  m_auth_basic_file_;
+  std::string                         m_auth_basic_realm_;
+  std::map<std::string, std::string>  m_auth_basic_file_;
   std::set<std::string>               m_allow_method_;
   std::set<std::string>               m_index_;
   std::set<std::string>               m_cgi_;

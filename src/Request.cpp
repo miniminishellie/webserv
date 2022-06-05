@@ -6,7 +6,7 @@
 /*   By: jihoolee <jihoolee@student.42SEOUL.kr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/26 14:54:39 by jihoolee          #+#    #+#             */
-/*   Updated: 2022/05/31 20:01:34 by jihoolee         ###   ########.fr       */
+/*   Updated: 2022/06/06 00:54:25 by jihoolee         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -46,28 +46,28 @@ Request::Request(Connection* connection, ServerConfig* serverconfig, std::string
     throw std::runtime_error("gettimeofday function failed in request generator");
   std::vector<std::string> parsed = ft::splitStringByChar(start_line, ' ');
   if (parsed.size() != 3)
-    std::cout << "StartLine TOKEN _NUM ERROR" << std::endl; //throw(40000)
+    throw 40000;
   if (!ParseMethod(parsed[0]))
-    std::cout << "StartLine METHOD ERROR" << std::endl; //throw(40001)
+    throw(40001);
   if (parsed[1].length() > m_server_config_->get_m_request_uri_size_limit())
-    std::cout << "StartLine URI_LENGTH ERROR" << std::endl;//throw(41410)
+    throw 41410;
   m_uri_ = parsed[1];
   m_uri_type_ = FILE;
   if (!AssignLocationMatchingUri(m_uri_))
-    throw (40401);
+    throw 40401;
   std::string translated_path = ParseUri();
   if (translated_path.empty())
-    throw (40002);
+    throw 40002;
   if (ft::isFile(translated_path) && m_uri_type_ != Request::CGI)
     m_uri_type_ = Request::FILE;
   else if (ft::isDirectory(translated_path))
     m_uri_type_ = DIRECTORY;
   else if (m_uri_type_ != Request::CGI)
-    throw (40402);
+    throw 40402;
   m_protocol_ = parsed[2];
   if (m_protocol_ != "HTTP/1.1")
-    throw (50501);
-  //m_special_header_count_ = 0;
+    throw 50501;
+  m_special_header_count_ = 0;
 }
 
 Request::Request(const Request &r)
@@ -175,15 +175,15 @@ void Request::AddHeader(std::string header) {
     key[i] = (i == 0 || key[i - 1] == '-') ? std::toupper(key[i]) : std::tolower(key[i]);
   std::pair<std::map<std::string, std::string>::iterator, bool> result = m_headers_.insert(std::make_pair(key, value));
   if (!result.second)
-    std::cout << "Error: Duplicate Header" << std::endl; // throw 40003
+    throw 40003;
   if (key == "Transfer-Encoding" && value.find("chunked") != std::string::npos)
     m_transfer_type_ = Request::CHUNKED;
   if (key == "Content-Length") {
     m_content_length_ = ft::stoi(value);
     if (m_content_length_ > m_server_config_->get_m_client_body_size_limit())
-      std::cout << "Content length header value is over than body limit size" << std::endl;//throw (41303);
+      throw 41303;
     if (m_content_length_ < 0)
-      std::cout << "Content-Length header value is less than 0" << std::endl; // throw(40004)
+      throw 40004;
   }
   if (key[0] == 'X')
     ++m_special_header_count_;
@@ -207,6 +207,23 @@ bool Request::AssignLocationMatchingUri(std::string uri)
   if (!max_uri_match)
     return false;
   return true;
+}
+
+void Request::clear() {
+  m_phase_ = READY;
+  m_method_ = DEFAULT;
+  m_content_.clear();
+  m_content_length_ = 0;
+  m_uri_type_ = FILE;
+  m_transfer_type_ = GENERAL;
+  m_uri_.clear();
+  m_protocol_.clear();
+  m_headers_.clear();
+  m_special_header_count_ = 0;
+  m_query_.clear();
+  m_script_translated_.clear();
+  m_path_translated_.clear();
+  m_path_info_.clear();
 }
 
 std::string Request::GetTranslatedPath(std::string root, std::string uri) {

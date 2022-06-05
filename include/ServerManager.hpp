@@ -6,7 +6,7 @@
 /*   By: jihoolee <jihoolee@student.42SEOUL.kr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/20 22:17:14 by bylee             #+#    #+#             */
-/*   Updated: 2022/06/04 17:43:16 by jihoolee         ###   ########.fr       */
+/*   Updated: 2022/06/05 18:04:18 by jihoolee         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -90,7 +90,6 @@ class ServerManager {
 
  private:
   void  addServer_(ServerConfig new_server);
-  void  changeSignal_(int sig);
   void  changeEvents_(std::vector<struct kevent>& change_list,
                       uintptr_t ident,
                       int16_t filter,

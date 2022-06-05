@@ -6,7 +6,7 @@
 /*   By: jihoolee <jihoolee@student.42SEOUL.kr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/18 21:23:44 by jihoolee          #+#    #+#             */
-/*   Updated: 2022/06/03 21:18:49 by jihoolee         ###   ########.fr       */
+/*   Updated: 2022/06/06 00:45:36 by jihoolee         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -60,6 +60,8 @@ class Connection {
   int         get_m_read_from_server_fd() const;
   int         get_m_write_to_server_fd() const;
 
+  int         get_m_wbuf_data_size() const;
+  int         get_m_send_data_size() const;
   int                get_m_readed_size() const;
   std::string        get_m_read_buffer_client() const;
   const Request&     get_m_request() const;
@@ -74,8 +76,12 @@ class Connection {
   void set_m_read_from_server_fd(int fd);
   void set_m_write_to_server_fd(int fd);
 
+  void set_m_wbuf_data_size(int size);
+  void set_m_sent_data_size(int size);
   void set_m_readed_size(int size);
   void set_m_read_buffer_client(std::string read_buffer);
+
+  void set_m_wbuf_for_send(std::string wbuf_string = "");
 
   /* member function */
   bool  RunRecvAndSolve();
@@ -115,6 +121,11 @@ class Connection {
   void ExecutePost(const Request& request);
   void ExecuteDelete(const Request& request);
 
+  bool runSend();
+  void sendFromWbuf();
+  void writeSendResponseLog(const Response& response);
+  void clear();
+
  private:
   ServerManager*  m_server_manager_;
   WebservConfig*  m_webserv_config_;
@@ -128,6 +139,8 @@ class Connection {
   int             m_read_from_server_fd_;
   int             m_write_to_server_fd_;
   std::string     m_wbuf_;
+  int             m_wbuf_data_size_;
+  int             m_send_data_size_;
   int             m_readed_size_;
   std::string     m_read_buffer_client_;
   Request         m_request_;
