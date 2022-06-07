@@ -6,7 +6,7 @@
 /*   By: jihoolee <jihoolee@student.42SEOUL.kr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/20 22:17:14 by bylee             #+#    #+#             */
-/*   Updated: 2022/06/05 18:04:18 by jihoolee         ###   ########.fr       */
+/*   Updated: 2022/06/07 20:17:24 by jihoolee         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -48,6 +48,7 @@ class ServerManager {
   ServerManager constructor & destructor declaration
   */
   enum FdType { FD_SERVER, FD_CLIENT, FD_CGI};
+  enum CGIMode {CGI_READ, CGI_WRITE};
   ServerManager();
   ServerManager(const ServerManager& ref);
 
@@ -71,6 +72,8 @@ class ServerManager {
   void  openLog(void);
   int   getUnusedConnectionFd(void);
   void  closeConnection(int client_fd);
+
+  void  addCGIConnectionMap(int fd, Connection* connection);
 
   class IOError: public std::exception{
    public:
@@ -114,6 +117,7 @@ class ServerManager {
   WebservConfig                       m_config_;
   std::map<int, ServerConfig>         m_server_configs_;
   std::map<int, Connection>           m_connections_;
+  std::map<int, Connection*>          m_cgi_connection_map_;
 
   int                                 m_kqueue_;
   std::map<int, FdType>               m_fd_set_;  //  ->필요한지 한번 생각해보자

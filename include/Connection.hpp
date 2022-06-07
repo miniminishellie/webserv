@@ -6,7 +6,7 @@
 /*   By: jihoolee <jihoolee@student.42SEOUL.kr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/18 21:23:44 by jihoolee          #+#    #+#             */
-/*   Updated: 2022/06/06 00:45:36 by jihoolee         ###   ########.fr       */
+/*   Updated: 2022/06/07 21:28:14 by jihoolee         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -98,12 +98,13 @@ class Connection {
   int   getChunkedSize(std::string& str, std::string& len);
   bool  ReadGeneralBody();
   bool  ReadChunkedBody();
+  void  makeResponse401();
   void  CreateResponse(int status, headers_t headers = headers_t(), std::string body = "");
   void  ReportCreateNewRequestLog(int status);
   std::string GetDateHeader();
   std::string GetServerHeader();
   void CreateCGIResponse(int& status, headers_t& headers, std::string& body);
-  void SolveRequest(const Request& request);
+  void SolveRequest();
   void WriteCreateNewRequestLog(const Request& request);
   void ExecuteAutoindex(const Request& request);
   void ExecuteGet(const Request& request);
@@ -126,6 +127,11 @@ class Connection {
   void writeSendResponseLog(const Response& response);
   void clear();
 
+  void addReadbufferServer(const char* str, int size);
+  void writeChunkedBodyToCGIScript();
+  void writeSavedBodyToCGIScript();
+  bool runExecute(ServerManager::CGIMode mode);
+
  private:
   ServerManager*  m_server_manager_;
   WebservConfig*  m_webserv_config_;
@@ -143,6 +149,7 @@ class Connection {
   int             m_send_data_size_;
   int             m_readed_size_;
   std::string     m_read_buffer_client_;
+  std::string     m_read_buffer_server_;
   Request         m_request_;
   Response        m_response_;
 };  //  class Connection

@@ -6,7 +6,7 @@
 /*   By: jihoolee <jihoolee@student.42SEOUL.kr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/17 18:42:34 by jihoolee          #+#    #+#             */
-/*   Updated: 2022/06/06 01:28:51 by jihoolee         ###   ########.fr       */
+/*   Updated: 2022/06/07 21:51:26 by jihoolee         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -17,6 +17,7 @@ ServerManager::ServerManager(void)
     : m_config_(),
       m_server_configs_(),
       m_connections_(),
+      m_cgi_connection_map_(),
       m_kqueue_(-1),
       m_fd_set_(),
       m_change_list_() {
@@ -27,6 +28,7 @@ ServerManager::ServerManager(const ServerManager& ref)
     : m_config_(ref.m_config_),
       m_server_configs_(ref.m_server_configs_),
       m_connections_(ref.m_connections_),
+      m_cgi_connection_map_(),
       m_kqueue_(ref.m_kqueue_),
       m_fd_set_(),
       m_change_list_(ref.m_change_list_) {
@@ -37,6 +39,7 @@ ServerManager::ServerManager(const ServerManager& ref)
 ServerManager::~ServerManager(void) {
   m_server_configs_.clear();
   m_connections_.clear();
+  m_cgi_connection_map_.clear();
   m_kqueue_ = -1;
   m_fd_set_.clear();
   m_change_list_.clear();
@@ -48,6 +51,7 @@ ServerManager& ServerManager::operator=(const ServerManager& ref) {
   m_config_ = ref.m_config_;
   m_server_configs_ = ref.m_server_configs_;
   m_connections_ = ref.m_connections_;
+  m_cgi_connection_map_ = ref.m_cgi_connection_map_;
   m_kqueue_ = ref.m_kqueue_;
   m_fd_set_ = ref.m_fd_set_;
   memcpy(m_returned_events_, ref.m_returned_events_,
@@ -190,6 +194,20 @@ void ServerManager::runServers(void) {
             }
           }
           case FD_CGI: {
+            Connection* curr_connection = m_cgi_connection_map_[curr_event->ident];
+            Connection::Status connection_status = curr_connection->get_m_status();
+
+            try {
+              if (connection_status == Connection::ON_EXECUTE &&
+                  curr_connection->get_m_read_from_server_fd() != 1)
+                curr_connection->runExecute(CGI_READ);
+            } catch(ServerManager::IOError& e) {
+              ft::log(ServerManager::log_fd, ft::getTimestamp() + e.location() + std::string("\n"));
+              closeConnection(curr_event->ident);
+            } catch (...) {
+              ft::log(ServerManager::log_fd, ft::getTimestamp() + "detected some error" + std::string("\n"));
+              closeConnection(curr_event->ident);
+            }
             break;
           }
         }
@@ -213,6 +231,20 @@ void ServerManager::runServers(void) {
             break;
           }
           case FD_CGI: {
+            Connection* curr_connection = m_cgi_connection_map_[curr_event->ident];
+            Connection::Status connection_status = curr_connection->get_m_status();
+
+            try {
+              if (connection_status == Connection::ON_EXECUTE &&
+                  curr_connection->get_m_read_from_server_fd() != 1)
+                curr_connection->runExecute(CGI_READ);
+            } catch(ServerManager::IOError& e) {
+              ft::log(ServerManager::log_fd, ft::getTimestamp() + e.location() + std::string("\n"));
+              closeConnection(curr_event->ident);
+            } catch (...) {
+              ft::log(ServerManager::log_fd, ft::getTimestamp() + "detected some error" + std::string("\n"));
+              closeConnection(curr_event->ident);
+            }
             break;
           }
         }
@@ -273,6 +305,11 @@ void ServerManager::closeConnection(int client_fd) {
     close(cgi_write_fd);
   }
   m_connections_.erase(client_fd);
+  m_fd_set_.erase(client_fd);
+}
+
+void ServerManager::addCGIConnectionMap(int fd, Connection* connection) {
+  m_cgi_connection_map_[fd] = connection;
 }
 
 void ServerManager::addServer_(ServerConfig new_server) {
@@ -330,12 +367,13 @@ bool ServerManager::acceptNewConnection_(int server_socket_fd) {
   }
   if (fcntl(client_fd, F_SETFL, O_NONBLOCK) == -1)
     return false;
+  //  TO_CHECK
   // setsockopt(client_fd, SOL_SOCKET, SO_RCVTIMEO, (struct timeval*)&tv, sizeof(struct timeval));
   // setsockopt(client_fd, SOL_SOCKET, SO_SNDTIMEO, (struct timeval*)&tv, sizeof(struct timeval));
   addEvent(client_fd, EVFILT_READ, EV_ADD | EV_ENABLE,
             0, 0, NULL);
-  addEvent(client_fd, EVFILT_WRITE, EV_ADD | EV_ENABLE,
-            0, 0, NULL);
+  // addEvent(client_fd, EVFILT_WRITE, EV_ADD | EV_ENABLE,
+  //           0, 0, NULL);
   client_ip = ft::inet_ntoa(client_addr.sin_addr.s_addr);
   client_port = static_cast<int>(client_addr.sin_port);
   m_connections_[client_fd] =
@@ -512,20 +550,20 @@ bool ServerManager::isValidLocationBlock_(std::string& location_block){
   if (location.size() != 1 || location[0].empty() || location[0][0] != '/')
     return (false);
 
-  // struct stat buf;
-  // std::string root = map_block[key[1]];
-  // stat(root.c_str(), &buf);
-  // if (!S_ISDIR(buf.st_mode) || root.empty() || (root != "/" && root.size() > 1 && root[root.size() - 1] == '/'))
-  //   return (false);
-  // if ((ft::hasKey(map_block, key[3]) && !ft::hasKey(map_block, key[4]))
-  // || (!ft::hasKey(map_block, key[3]) && ft::hasKey(map_block, key[4])))
-  //  return (false);
-  // if (ft::hasKey(map_block, key[4]))
-  // {
-  //  stat(map_block[key[4]].c_str(), &buf);
-  //  if (!S_ISREG(buf.st_mode))
-  //    return (false);
-  // }
+  struct stat buf;
+  std::string root = map_block[key[1]];
+  stat(root.c_str(), &buf);
+  if (!S_ISDIR(buf.st_mode) || root.empty() || (root != "/" && root.size() > 1 && root[root.size() - 1] == '/'))
+    return (false);
+  if ((ft::hasKey(map_block, key[3]) && !ft::hasKey(map_block, key[4]))
+  || (!ft::hasKey(map_block, key[3]) && ft::hasKey(map_block, key[4])))
+   return (false);
+  if (ft::hasKey(map_block, key[4]))
+  {
+   stat(map_block[key[4]].c_str(), &buf);
+   if (!S_ISREG(buf.st_mode))
+     return (false);
+  }
   if (ft::hasKey(map_block, key[2]))
   {
     std::set<std::string> data_set = ft::stringVectorToSet(ft::splitStringByChar(map_block[key[2]], ' '));

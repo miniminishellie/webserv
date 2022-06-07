@@ -6,7 +6,7 @@
 /*   By: jihoolee <jihoolee@student.42SEOUL.kr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/25 21:44:42 by jihoolee          #+#    #+#             */
-/*   Updated: 2022/06/06 01:29:36 by jihoolee         ###   ########.fr       */
+/*   Updated: 2022/06/07 21:56:11 by jihoolee         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -31,6 +31,7 @@ Connection::Connection(void)
       m_send_data_size_(0),
       m_readed_size_(0),
       m_read_buffer_client_(),
+      m_read_buffer_server_(),
       m_request_(),
       m_response_() {
   this->m_last_request_at_.tv_sec = 0;
@@ -54,6 +55,7 @@ Connection::Connection(ServerManager* sm, ServerConfig* sc, int client_fd,
       m_send_data_size_(0),
       m_readed_size_(0),
       m_read_buffer_client_(),
+      m_read_buffer_server_(),
       m_request_(),
       m_response_() {
   this->m_last_request_at_.tv_sec = 0;
@@ -77,6 +79,7 @@ Connection::Connection(const Connection &c)
       m_send_data_size_(c.m_send_data_size_),
       m_readed_size_(c.m_readed_size_),
       m_read_buffer_client_(c.m_read_buffer_client_),
+      m_read_buffer_server_(c.m_read_buffer_server_),
       m_request_(c.m_request_),
       m_response_(c.m_response_) {
 }
@@ -99,6 +102,7 @@ Connection &Connection::operator=(const Connection &operand) {
   m_send_data_size_ = operand.m_send_data_size_;
   m_readed_size_ = operand.m_readed_size_;
   m_read_buffer_client_ = operand.m_read_buffer_client_;
+  m_read_buffer_server_ = operand.m_read_buffer_server_;
   m_request_ = operand.m_request_;
   m_response_ = operand.m_response_;
   return *this;
@@ -114,6 +118,7 @@ void Connection::clear() {
   m_readed_size_ = 0;
   m_response_.clear();
   m_read_buffer_client_.clear();  //  TO_CHECK
+  m_read_buffer_server_.clear();
   m_wbuf_.clear();
   m_wbuf_data_size_ = 0;
   m_send_data_size_ = 0;
@@ -360,8 +365,8 @@ int Connection::RecvBody(char *buf, int buf_size) {
   int i = 0;
   int read_size = 0;
 
-  if (m_request_.get_m_method() == Request::POST && m_request_.get_m_transfer_type() == Request::CHUNKED)
-    return 0;
+  // if (m_request_.get_m_method() == Request::POST && m_request_.get_m_transfer_type() == Request::CHUNKED)
+  //   return 0;
   if ((read_size = recv(m_client_fd_, buf, buf_size, 0)) > 0)
     return read_size;
   else if (read_size == -1)
@@ -549,6 +554,14 @@ void Connection::CreateCGIResponse(int& status, headers_t& headers, std::string&
   headers.push_back("Transfer-Encoding:chunked");
 }
 
+void Connection::makeResponse401() {
+  std::string header = "WWW-Authenticate:Basic realm=\"";
+
+  header.append(m_request_.get_m_locationconfig()->get_m_auth_basic_realm());
+  header.append("\", charset=\"UTF-8\"");
+  return CreateResponse(40101, headers_t(1, header));
+}
+
 void Connection::CreateResponse(int status, headers_t headers, std::string body) {
   if (status >= 40000) {
     ReportCreateNewRequestLog(status);
@@ -588,8 +601,10 @@ void Connection::CreateResponse(int status, headers_t headers, std::string body)
     response.addHeader(key, value);
   }
   // writeCreateNewResponseLog(response);
-  const_cast<Request&>(m_request_).set_m_phase(Request::COMPLETE);
+  m_request_.set_m_phase(Request::COMPLETE);
   m_status_ = TO_SEND;
+  m_server_manager_->addEvent(m_client_fd_, EVFILT_WRITE, EV_ADD | EV_ENABLE,
+                              0, 0, NULL);
   //m_manager->fdSet(response.get_m_connection()->get_m_client_fd(), ServerManager::WRITE_SET);
 }
 
@@ -759,7 +774,6 @@ void Connection::ExecuteCGI(const Request& request)
   int child_write_fd[2];
   char **env;
   Request::Method method = request.get_m_method();
-  std::string body;
 
   if ((env = CreateCGIEnv(request)) == NULL)
     return CreateResponse(50003);
@@ -783,11 +797,19 @@ void Connection::ExecuteCGI(const Request& request)
     m_write_to_server_fd_ = parent_write_fd[1];
     if (request.get_m_transfer_type() == Request::GENERAL)
       m_wbuf_ = m_request_.get_m_content();
+    m_server_manager_->addEvent(m_write_to_server_fd_, EVFILT_WRITE,
+                                EV_ADD | EV_ENABLE, 0, 0, NULL);
+    m_server_manager_->addCGIConnectionMap(m_write_to_server_fd_, this);
+    m_server_manager_->insertFd(m_write_to_server_fd_, ServerManager::FD_CGI);
     //m_manager->fdSet(connection.get_m_write_to_server_fd(), ServerManager::WRITE_SET);
   }
   else
     close(parent_write_fd[1]);
   m_read_from_server_fd_ = child_write_fd[0];
+  m_server_manager_->addEvent(m_read_from_server_fd_, EVFILT_READ,
+                              EV_ADD | EV_ENABLE, 0, 0, NULL);
+  m_server_manager_->addCGIConnectionMap(m_read_from_server_fd_, this);
+  m_server_manager_->insertFd(m_write_to_server_fd_, ServerManager::FD_CGI);
   //m_manager->fdSet(connection.get_m_read_from_server_fd(), ServerManager::READ_SET);
   ft::freeDoublestr(&env);
 }
@@ -800,6 +822,97 @@ void Connection::ExecutePost(const Request& request) {
 }
 
 namespace {
+static const std::string base64_chars =
+              "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+              "abcdefghijklmnopqrstuvwxyz"
+              "0123456789+/";
+
+static inline bool is_base64(unsigned char c) {
+  return (isalnum(c) || (c == '+') || (c == '/'));
+}
+
+std::string base64_encode(unsigned char const* buf, unsigned int bufLen) {
+  std::string ret;
+  int i = 0;
+  int j = 0;
+  unsigned char char_array_3[3];
+  unsigned char char_array_4[4];
+
+  while (bufLen--) {
+    char_array_3[i++] = *(buf++);
+    if (i == 3) {
+      char_array_4[0] = (char_array_3[0] & 0xfc) >> 2;
+      char_array_4[1] = ((char_array_3[0] & 0x03) << 4) + ((char_array_3[1] & 0xf0) >> 4);
+      char_array_4[2] = ((char_array_3[1] & 0x0f) << 2) + ((char_array_3[2] & 0xc0) >> 6);
+      char_array_4[3] = char_array_3[2] & 0x3f;
+      for(i = 0; (i <4) ; i++)
+        ret += base64_chars[char_array_4[i]];
+      i = 0;
+    }
+  }
+  if (i)
+  {
+    for(j = i; j < 3; j++)
+      char_array_3[j] = '\0';
+    char_array_4[0] = (char_array_3[0] & 0xfc) >> 2;
+    char_array_4[1] = ((char_array_3[0] & 0x03) << 4) + ((char_array_3[1] & 0xf0) >> 4);
+    char_array_4[2] = ((char_array_3[1] & 0x0f) << 2) + ((char_array_3[2] & 0xc0) >> 6);
+    char_array_4[3] = char_array_3[2] & 0x3f;
+    for (j = 0; (j < i + 1); j++)
+      ret += base64_chars[char_array_4[j]];
+    while((i++ < 3))
+      ret += '=';
+  }
+  return ret;
+}
+
+std::vector<unsigned char> base64_decode(std::string const& encoded_string) {
+  int in_len = encoded_string.size();
+  int i = 0;
+  int j = 0;
+  int in_ = 0;
+  unsigned char char_array_4[4], char_array_3[3];
+  std::vector<unsigned char> ret;
+
+  while (in_len-- && ( encoded_string[in_] != '=') && is_base64(encoded_string[in_])) {
+    char_array_4[i++] = encoded_string[in_]; in_++;
+    if (i ==4) {
+      for (i = 0; i <4; i++)
+        char_array_4[i] = base64_chars.find(char_array_4[i]);
+      char_array_3[0] = (char_array_4[0] << 2) + ((char_array_4[1] & 0x30) >> 4);
+      char_array_3[1] = ((char_array_4[1] & 0xf) << 4) + ((char_array_4[2] & 0x3c) >> 2);
+      char_array_3[2] = ((char_array_4[2] & 0x3) << 6) + char_array_4[3];
+      for (i = 0; (i < 3); i++)
+          ret.push_back(char_array_3[i]);
+      i = 0;
+    }
+  }
+  if (i) {
+    for (j = i; j <4; j++)
+      char_array_4[j] = 0;
+    for (j = 0; j <4; j++)
+      char_array_4[j] = base64_chars.find(char_array_4[j]);
+    char_array_3[0] = (char_array_4[0] << 2) + ((char_array_4[1] & 0x30) >> 4);
+    char_array_3[1] = ((char_array_4[1] & 0xf) << 4) + ((char_array_4[2] & 0x3c) >> 2);
+    char_array_3[2] = ((char_array_4[2] & 0x3) << 6) + char_array_4[3];
+    for (j = 0; (j < i - 1); j++) ret.push_back(char_array_3[j]);
+  }
+    return ret;
+}
+
+void basic_decode(std::string data, std::string& key, std::string& value) {
+  std::string decoded_data = ft::containerToString(base64_decode(data), "");
+
+  if (decoded_data.find(":") == std::string::npos || decoded_data.find(":") == decoded_data.size() - 1)
+    return;
+  int idx = decoded_data.find(":");
+
+  key = decoded_data.substr(0, idx);
+
+  std::vector<unsigned char> value_base(decoded_data.begin()+ idx + 1, decoded_data.end());
+  value = base64_encode(&value_base[0], value_base.size());
+}
+
 bool isAuthorizationRequired(LocationConfig* location) {
   return !location->get_m_auth_basic_realm().empty();
 }
@@ -813,43 +926,47 @@ bool isValidCredentialForm(std::vector<std::string> credential) {
 }
 
 bool isValidCredentialContent(LocationConfig* location,
-                              std::vector<std::string> credential) {
+                              std::vector<std::string>& credential) {
   std::string key, value;
-
-  return true;
+  basic_decode(credential[1], key, value);
+  return (key.empty() || value.empty() ||
+          !ft::hasKey(location->get_m_auth_basic_file, key) ||
+          location->get_m_auth_basic_file().find(key)->second != value);
 }
 }  //  anonymous namespace
 
-void Connection::SolveRequest(const Request& request) {
-  LocationConfig* locationconfig = request.get_m_locationconfig();
-  Request::Method method = request.get_m_method();
-  std::string methodString = request.get_m_method_to_string();
+void Connection::SolveRequest() {
+  LocationConfig* locationconfig = m_request_.get_m_locationconfig();
+  Request::Method method = m_request_.get_m_method();
+  std::string methodString = m_request_.get_m_method_to_string();
 
   if (!ft::hasKey(locationconfig->get_m_allow_method(), methodString)) {
     headers_t headers(1, "Allow:" + ft::containerToString(locationconfig->get_m_allow_method(), ", "));
     return CreateResponse(40501, headers);
   }
-  // if (isAuthorizationRequired(location)) {
-  // 	if (!hasCredential(request)) {
-  // 		return makeResponse401(this, request, connection));
-  // 	} else {
-  // 		std::vector<std::string> credential = ft::splitStringByChar(request.get_m_headers().find("Authorization")->second, ' ');
-  // 		if (!isValidCredentialForm(credential))
-  // 			return CreateResponse(40022));
-  // 		else if (!isValidCredentialContent(location, credential))
-  // 			return CreateResponse( 40301));
-  // 	}
-  // }
-  if (request.get_m_uri_type() == Request::DIRECTORY)
-    return ExecuteAutoindex(request);
-  else if (request.get_m_uri_type() == Request::CGI)
-    return ExecuteCGI(request);
+  if (isAuthorizationRequired(locationconfig)) {
+    if (!hasCredential(m_request_)) {
+      return makeResponse401();
+    } else {
+      std::vector<std::string> credential =
+        ft::splitStringByChar(
+          m_request_.get_m_headers().find("Authorization")->second, ' ');
+      if (!isValidCredentialForm(credential))
+        return CreateResponse(40022);
+      else if (!isValidCredentialContent(locationconfig, credential))
+        return CreateResponse(40301);
+    }
+  }
+  if (m_request_.get_m_uri_type() == Request::DIRECTORY)
+    return ExecuteAutoindex(m_request_);
+  else if (m_request_.get_m_uri_type() == Request::CGI)
+    return ExecuteCGI(m_request_);
   else if (method == Request::GET)
-    ExecuteGet(request);
+    ExecuteGet(m_request_);
   else if (method == Request::POST)
-    ExecutePost(request);
+    ExecutePost(m_request_);
   else if (method == Request::DELETE)
-    ExecuteDelete(request);
+    ExecuteDelete(m_request_);
   else
     throw (400);
 }
@@ -894,7 +1011,7 @@ bool Connection::RunRecvAndSolve() {
   if (m_request_.get_m_phase() == Request::COMPLETE) {
     WriteCreateNewRequestLog(m_request_);
     m_status_ = ON_EXECUTE;
-    SolveRequest(m_request_);
+    SolveRequest();
     return true;
   }
   return false;
@@ -941,4 +1058,98 @@ void Connection::writeSendResponseLog(const Response& response) {
   + ft::to_string(response.get_m_headers().size()) + "][body:" + ft::to_string(response.get_m_content().size()) + "]";
   text.append(" Response sended\n");
   ft::log(ServerManager::log_fd, text);
+}
+
+void Connection::addReadbufferServer(const char* str, int size) {
+  m_read_buffer_server_.append(str, size);
+}
+
+// void Connection::writeChunkedBodyToCGIScript() {
+//   std::string& rbuf = m_read_buffer_client_;
+//   int client_fd = m_client_fd_;
+//   int to_child_fd = m_write_to_server_fd_;
+//   char buf[BUFFER_SIZE];
+//   int count;
+
+//   if (rbuf.size() < 70000 && /*FD_ISSET(client_fd_, ServerManager::READ_COPY_SET*/) {
+//     if ((count = recv(m_client_fd_, buf, sizeof(buf), 0)) > 0)
+//       addReadbufferClient(buf, count);
+//     else if (count == -1)
+//       throw ServerManager::IOError(("IOERROR"));
+//     else
+//       throw ServerManager::IOError(("Connection close detected by client"));
+//   }
+// }
+
+void Connection::writeSavedBodyToCGIScript() {
+  int to_child_fd = m_write_to_server_fd_;
+  const std::string& data = m_wbuf_;
+
+  if (!data.empty()) {
+    int count = data.size() > BUFFER_SIZE ? BUFFER_SIZE : data.size();
+    count = write(to_child_fd, data.c_str(), count);
+    if (count == 0 || count == -1)
+      throw ServerManager::IOError(
+        ("IO Error detected from write body to child proccess"
+        + ft::to_string(to_child_fd)).c_str());
+    m_wbuf_ = m_wbuf_.erase(0, count);
+  } else {
+    close(to_child_fd);
+    m_write_to_server_fd_ = -1;
+    m_server_manager_->addEvent(to_child_fd, EVFILT_WRITE,
+                                EV_DELETE, 0, 0, NULL);
+  }
+}
+
+bool Connection::runExecute(ServerManager::CGIMode mode) {
+  int from_child_fd = m_read_from_server_fd_;
+  int to_child_fd = m_write_to_server_fd_;
+  int stat;
+  bool read_end = false;
+
+  if (from_child_fd != -1 && mode == ServerManager::CGI_READ) {
+    char buf[BUFFER_SIZE];
+    int count = read(from_child_fd, buf, sizeof(buf));
+
+    if (count == 0)
+      read_end = true;
+    else if (count > 0)
+      addReadbufferServer(buf, count);
+    else
+      throw ServerManager::IOError("IO error detected to read from child proccess");
+
+
+  if (to_child_fd != 1 && mode == ServerManager::CGI_WRITE) {
+    // if (m_request_.get_m_method() == Request::POST &&
+    //     m_request_.get_m_transfer_type == Request::CHUNKED)
+    //   writeChunkedBodyToCGIScript();
+    // else
+      writeSavedBodyToCGIScript();
+  }
+
+  waitpid(-1, &stat, WNOHANG);
+  if (WIFEXITED(stat) && read_end == true && m_write_to_server_fd_ == -1) {
+    if (from_child_fd != -1) {
+      close(from_child_fd);
+      m_server_manager_->addEvent(from_child_fd, EVFILT_WRITE,
+                                  EV_DELETE, 0, 0, NULL);
+      std::string body = m_read_buffer_server_;
+      m_read_buffer_server_.clear();
+      m_wbuf_.clear();
+      if (m_request_.get_m_uri_type() == Request::CGI) {
+        int body_size = m_request_.get_m_locationconfig()->get_m_limit_client_body_size();
+        if (body.size() > body_size + body.find("\r\n\r\n" + 4)) {
+          CreateResponse(41301);
+        } else {
+          std::cout << body << std::endl;
+          CreateResponse(CGI_SUCCESS_CODE, headers_t(), body);
+        }
+      } else {
+        CreateResponse(200, headers_t(), body);
+      }
+      m_status_ = TO_SEND;
+      return true;
+    }
+    return false;
+  }
 }
