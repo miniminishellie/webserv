@@ -6,7 +6,7 @@
 /*   By: jihoolee <jihoolee@student.42SEOUL.kr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/21 15:11:56 by bylee             #+#    #+#             */
-/*   Updated: 2022/05/31 17:11:00 by jihoolee         ###   ########.fr       */
+/*   Updated: 2022/06/08 16:25:08 by jihoolee         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -63,6 +63,8 @@ std::map<std::string, std::string>  stringVectorToMap(
                                       char sep = ':');
 std::set<std::string>               stringVectorToSet(
                                       std::vector<std::string> stringVector);
+
+std::string containerToString(std::vector<unsigned char> constainer, std::string sep = "");
 std::string to_string(long long int n);
 std::string inet_ntoa(unsigned int address);
 

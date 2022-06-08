@@ -6,7 +6,7 @@
 /*   By: jihoolee <jihoolee@student.42SEOUL.kr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/25 21:44:42 by jihoolee          #+#    #+#             */
-/*   Updated: 2022/06/07 21:56:11 by jihoolee         ###   ########.fr       */
+/*   Updated: 2022/06/08 21:04:31 by jihoolee         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -42,7 +42,7 @@ Connection::Connection(void)
 Connection::Connection(ServerManager* sm, ServerConfig* sc, int client_fd,
               std::string& client_ip, int client_port)
     : m_server_manager_(sm),
-      m_webserv_config_(&sm->get_m_config()),
+      m_webserv_config_(sm->get_m_config()),
       m_server_config_(sc),
       m_status_(ON_WAIT),
       m_client_fd_(client_fd),
@@ -217,16 +217,16 @@ char** Connection::DupBaseEnvWithExtraSpace(const Request& request) {
   char **cgi_env = NULL;
   int idx = 0;
   int base_len = ft::lenDoubleStr(base_env);
-  //int custom_len = request.get_m_special_header_count();
+  int custom_len = request.get_m_special_header_count();
 
-  //if ((cgi_env = reinterpret_cast<char **>(malloc(sizeof(char *) * (base_len + custom_len + CGI_META_VARIABLE_COUNT + 1)))) == 0)
-  //  return NULL);
+  if ((cgi_env = reinterpret_cast<char **>(malloc(sizeof(char *) * (base_len + custom_len + CGI_META_VARIABLE_COUNT + 1)))) == 0)
+   return NULL;
   while (base_env[idx] != NULL) {
     cgi_env[idx] = ft::strdup(base_env[idx]);
     ++idx;
   }
-  // while (idx < base_len + custom_len + CGI_META_VARIABLE_COUNT + 1) /* custom len?? */
-  //   cgi_env[idx++] = NULL;
+  while (idx < base_len + custom_len + CGI_META_VARIABLE_COUNT + 1) /* custom len?? */
+    cgi_env[idx++] = NULL;
   return cgi_env;
 }
 
@@ -362,11 +362,13 @@ bool Connection::IsRequestHasBody() {  // 수정 필요함
 }
 
 int Connection::RecvBody(char *buf, int buf_size) {
-  int i = 0;
+  // int i = 0;
   int read_size = 0;
 
   // if (m_request_.get_m_method() == Request::POST && m_request_.get_m_transfer_type() == Request::CHUNKED)
   //   return 0;
+  if (m_request_.get_m_method() != Request::POST)
+    return 0;
   if ((read_size = recv(m_client_fd_, buf, buf_size, 0)) > 0)
     return read_size;
   else if (read_size == -1)
@@ -446,7 +448,7 @@ bool Connection::ReadChunkedBody() {
       }
       throw 40018;
     }
-    if (m_read_buffer_client_.size() < content_length + 2) {
+    if (m_read_buffer_client_.size() < static_cast<size_t>(content_length + 2)) {
       m_read_buffer_client_.insert(0, len + "\r\n");
       return false;
     }
@@ -458,7 +460,9 @@ bool Connection::ReadChunkedBody() {
 }
 
 bool Connection::ParseBody() {
-  if (m_request_.get_m_method() == Request::POST && m_request_.get_m_transfer_type() == Request::CHUNKED)
+  // if (m_request_.get_m_method() == Request::POST && m_request_.get_m_transfer_type() == Request::CHUNKED)
+  //   return true;
+  if (m_request_.get_m_method() != Request::POST)
     return true;
   if (m_request_.get_m_transfer_type() == Request:: GENERAL)
     return ReadGeneralBody();
@@ -482,7 +486,6 @@ void Connection::addReadbufferClient(const char* str, int size) {
 
 void Connection::RecvRequest(void) {
   char buf[BUFFER_SIZE];
-  int fd;
   int read_size = BUFFER_SIZE - m_read_buffer_client_.size();
   Request::Phase phase = m_request_.get_m_phase();
   m_status_ = ON_RECV;
@@ -503,6 +506,8 @@ void Connection::RecvRequest(void) {
   if (phase == Request::COMPLETE)
     set_m_last_request_at();
   m_request_.set_m_phase(phase);
+  std::cout << "End of RecvRequest" << std::endl;
+  std::cout << "request phase: " << m_request_.get_m_phase() << std::endl;
 }
 
 void Connection::ReportCreateNewRequestLog(int status)
@@ -563,6 +568,7 @@ void Connection::makeResponse401() {
 }
 
 void Connection::CreateResponse(int status, headers_t headers, std::string body) {
+  std::cout << "CreateResponse" << std::endl;
   if (status >= 40000) {
     ReportCreateNewRequestLog(status);
     status /= 100;
@@ -930,12 +936,13 @@ bool isValidCredentialContent(LocationConfig* location,
   std::string key, value;
   basic_decode(credential[1], key, value);
   return (key.empty() || value.empty() ||
-          !ft::hasKey(location->get_m_auth_basic_file, key) ||
+          !ft::hasKey(location->get_m_auth_basic_file(), key) ||
           location->get_m_auth_basic_file().find(key)->second != value);
 }
 }  //  anonymous namespace
 
 void Connection::SolveRequest() {
+  std::cout << "SolveRequest start" << std::endl;
   LocationConfig* locationconfig = m_request_.get_m_locationconfig();
   Request::Method method = m_request_.get_m_method();
   std::string methodString = m_request_.get_m_method_to_string();
@@ -957,6 +964,7 @@ void Connection::SolveRequest() {
         return CreateResponse(40301);
     }
   }
+  std::cout << "SolveRequest mid" << std::endl;
   if (m_request_.get_m_uri_type() == Request::DIRECTORY)
     return ExecuteAutoindex(m_request_);
   else if (m_request_.get_m_uri_type() == Request::CGI)
@@ -980,6 +988,7 @@ void Connection::ExecuteDelete(const Request& request) {
 
 void Connection::WriteCreateNewRequestLog(const Request& request)
 {
+  std::cout << "여기냐 시발" << std::endl;
   if (request.get_m_method() != Request::POST)
     return ;
   int cfd = request.get_m_connection()->get_m_client_fd();
@@ -1008,18 +1017,19 @@ bool Connection::RunRecvAndSolve() {
     CreateResponse(50001);
     return true;
   }
+  std::cout << "RecvRequest done, new response to do" << std::endl;
   if (m_request_.get_m_phase() == Request::COMPLETE) {
     WriteCreateNewRequestLog(m_request_);
     m_status_ = ON_EXECUTE;
     SolveRequest();
     return true;
   }
+  std::cout << "RecvRequest end" << std::endl;
   return false;
 }
 
 bool Connection::runSend() {
   Connection::Status status = m_status_;
-  int fd = m_client_fd_;
 
   if (status == Connection::TO_SEND) {
     set_m_wbuf_for_send();
@@ -1101,7 +1111,7 @@ void Connection::writeSavedBodyToCGIScript() {
   }
 }
 
-bool Connection::runExecute(ServerManager::CGIMode mode) {
+bool Connection::runExecute(int mode) {
   int from_child_fd = m_read_from_server_fd_;
   int to_child_fd = m_write_to_server_fd_;
   int stat;
@@ -1117,7 +1127,7 @@ bool Connection::runExecute(ServerManager::CGIMode mode) {
       addReadbufferServer(buf, count);
     else
       throw ServerManager::IOError("IO error detected to read from child proccess");
-
+  }
 
   if (to_child_fd != 1 && mode == ServerManager::CGI_WRITE) {
     // if (m_request_.get_m_method() == Request::POST &&
@@ -1133,23 +1143,23 @@ bool Connection::runExecute(ServerManager::CGIMode mode) {
       close(from_child_fd);
       m_server_manager_->addEvent(from_child_fd, EVFILT_WRITE,
                                   EV_DELETE, 0, 0, NULL);
-      std::string body = m_read_buffer_server_;
-      m_read_buffer_server_.clear();
-      m_wbuf_.clear();
-      if (m_request_.get_m_uri_type() == Request::CGI) {
-        int body_size = m_request_.get_m_locationconfig()->get_m_limit_client_body_size();
-        if (body.size() > body_size + body.find("\r\n\r\n" + 4)) {
-          CreateResponse(41301);
-        } else {
-          std::cout << body << std::endl;
-          CreateResponse(CGI_SUCCESS_CODE, headers_t(), body);
-        }
-      } else {
-        CreateResponse(200, headers_t(), body);
-      }
-      m_status_ = TO_SEND;
-      return true;
     }
-    return false;
+    std::string body = m_read_buffer_server_;
+    m_read_buffer_server_.clear();
+    m_wbuf_.clear();
+    if (m_request_.get_m_uri_type() == Request::CGI) {
+      int body_size = m_request_.get_m_locationconfig()->get_m_limit_client_body_size();
+      if (body.size() > body_size + body.find("\r\n\r\n") + 4) {
+        CreateResponse(41301);
+      } else {
+        std::cout << body << std::endl;
+        CreateResponse(CGI_SUCCESS_CODE, headers_t(), body);
+      }
+    } else {
+      CreateResponse(200, headers_t(), body);
+    }
+    m_status_ = TO_SEND;
+    return true;
   }
+  return false;
 }

@@ -6,7 +6,7 @@
 /*   By: jihoolee <jihoolee@student.42SEOUL.kr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/21 15:39:29 by jihoolee          #+#    #+#             */
-/*   Updated: 2022/05/31 20:01:04 by jihoolee         ###   ########.fr       */
+/*   Updated: 2022/06/08 16:29:44 by jihoolee         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -47,6 +47,7 @@ class Request {
   const std::string &get_m_uri() const;
   const std::string &get_m_protocol() const;
   const std::map<std::string, std::string>& get_m_headers() const;
+  int get_m_special_header_count() const;
   const std::string &get_m_query() const;
   const std::string &get_m_content() const;
   int get_m_content_length() const;
@@ -79,9 +80,9 @@ class Request {
 
 
  private:
+  ServerConfig*                       m_server_config_;
   Connection*                         m_connection_;
   LocationConfig*                     m_locationconfig_;
-  ServerConfig*                       m_server_config_;
   timeval                             m_start_at_;
   Phase                               m_phase_;
   Method                              m_method_;

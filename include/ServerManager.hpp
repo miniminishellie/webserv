@@ -6,7 +6,7 @@
 /*   By: jihoolee <jihoolee@student.42SEOUL.kr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/20 22:17:14 by bylee             #+#    #+#             */
-/*   Updated: 2022/06/07 20:17:24 by jihoolee         ###   ########.fr       */
+/*   Updated: 2022/06/08 20:01:09 by jihoolee         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -56,7 +56,7 @@ class ServerManager {
 
   ServerManager& operator=(const ServerManager& ref);
 
-  WebservConfig get_m_config() const;
+  WebservConfig* get_m_config() const;
 
   void  createServers(const std::string& config_file_path, char* env[]);
   void  exitWebserv(const std::string& error_message);
@@ -92,7 +92,7 @@ class ServerManager {
   };  //  class IOError
 
  private:
-  void  addServer_(ServerConfig new_server);
+  void  addServer_(const ServerConfig& new_server);
   void  changeEvents_(std::vector<struct kevent>& change_list,
                       uintptr_t ident,
                       int16_t filter,

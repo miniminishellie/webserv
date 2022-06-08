@@ -6,7 +6,7 @@
 /*   By: jihoolee <jihoolee@student.42SEOUL.kr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/26 14:54:39 by jihoolee          #+#    #+#             */
-/*   Updated: 2022/06/06 00:54:25 by jihoolee         ###   ########.fr       */
+/*   Updated: 2022/06/08 21:01:20 by jihoolee         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -19,15 +19,16 @@
 Request::Request(void)
     : m_server_config_(NULL),
       m_connection_(NULL),
+      m_locationconfig_(NULL),
       m_phase_(READY),
       m_method_(DEFAULT),
+      m_content_(),
+      m_content_length_(),
       m_uri_type_(FILE),
       m_transfer_type_(GENERAL),
       m_uri_(),
       m_protocol_(),
       m_headers_(),
-      m_content_(),
-      m_content_length_(),
       m_special_header_count_(0),
       m_query_(),
       m_script_translated_(),
@@ -38,10 +39,10 @@ Request::Request(void)
 }
 
 Request::Request(Connection* connection, ServerConfig* serverconfig, std::string start_line)
-    : m_connection_(connection),
-      m_server_config_(serverconfig),
-      m_transfer_type_(GENERAL),
-      m_phase_(ON_HEADER) {
+    : m_server_config_(serverconfig),
+      m_connection_(connection),
+      m_phase_(ON_HEADER),
+      m_transfer_type_(GENERAL) {
   if (gettimeofday(&m_start_at_, NULL) == -1)
     throw std::runtime_error("gettimeofday function failed in request generator");
   std::vector<std::string> parsed = ft::splitStringByChar(start_line, ' ');
@@ -73,15 +74,16 @@ Request::Request(Connection* connection, ServerConfig* serverconfig, std::string
 Request::Request(const Request &r)
     : m_server_config_(r.m_server_config_),
       m_connection_(r.m_connection_),
+      m_locationconfig_(r.m_locationconfig_),
       m_phase_(r.m_phase_),
       m_method_(r.m_method_),
+      m_content_(r.m_content_),
+      m_content_length_(r.m_content_length_),
       m_uri_type_(r.m_uri_type_),
       m_transfer_type_(r.m_transfer_type_),
       m_uri_(r.m_uri_),
       m_protocol_(r.m_protocol_),
       m_headers_(r.m_headers_),
-      m_content_(r.m_content_),
-      m_content_length_(r.m_content_length_),
       m_special_header_count_(r.m_special_header_count_),
       m_query_(r.m_query_),
       m_script_translated_(r.m_script_translated_),
@@ -125,6 +127,7 @@ Request::URIType Request::get_m_uri_type() const { return m_uri_type_; }
 Request::TransferType Request::get_m_transfer_type() const { return m_transfer_type_; }
 const std::string &Request::get_m_uri() const { return m_uri_; }
 const std::string &Request::get_m_protocol() const { return m_protocol_; }
+int Request::get_m_special_header_count() const { return m_special_header_count_; }
 const std::map<std::string, std::string> &Request::get_m_headers() const { return  m_headers_; }
 const std::string		&Request::get_m_query() const { return (m_query_); }
 const std::string &Request::get_m_content() const { return m_content_; }
@@ -180,7 +183,7 @@ void Request::AddHeader(std::string header) {
     m_transfer_type_ = Request::CHUNKED;
   if (key == "Content-Length") {
     m_content_length_ = ft::stoi(value);
-    if (m_content_length_ > m_server_config_->get_m_client_body_size_limit())
+    if (static_cast<size_t>(m_content_length_) > m_server_config_->get_m_client_body_size_limit())
       throw 41303;
     if (m_content_length_ < 0)
       throw 40004;

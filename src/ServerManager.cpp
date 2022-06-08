@@ -6,12 +6,14 @@
 /*   By: jihoolee <jihoolee@student.42SEOUL.kr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/17 18:42:34 by jihoolee          #+#    #+#             */
-/*   Updated: 2022/06/07 21:51:26 by jihoolee         ###   ########.fr       */
+/*   Updated: 2022/06/08 21:12:06 by jihoolee         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "ServerManager.hpp"
 #include "Libft.hpp"
+
+int ServerManager::log_fd = -1;
 
 ServerManager::ServerManager(void)
     : m_config_(),
@@ -60,8 +62,8 @@ ServerManager& ServerManager::operator=(const ServerManager& ref) {
   return *this;
 }
 
-WebservConfig ServerManager::get_m_config() const {
-  return m_config_;
+WebservConfig* ServerManager::get_m_config() const {
+  return const_cast<WebservConfig*>(&m_config_);
 }
 
 ServerManager::IOError::IOError() throw() : std::exception() {}
@@ -121,7 +123,6 @@ void ServerManager::createServers(const std::string& config_file_path, char* env
     ServerConfig new_server =
         ServerConfig(&this->m_config_, server_block, location_blocks);
     addServer_(new_server);
-    // std::cout << Server(this, &this->m_config_, server_block, location_blocks);
   }
   writeCreateServerLog_();
 }
@@ -134,7 +135,7 @@ void ServerManager::exitWebserv(const std::string& what) {
 
 void changeSignal(int sig) {
   (void)sig;
-  ft::log(ServerManager::log_fd, "signal execute");
+  ft::log(ServerManager::log_fd, "signal execute\n");
   g_is_running = false;
 }
 
@@ -142,19 +143,24 @@ void ServerManager::runServers(void) {
   signal(SIGINT, changeSignal);
   g_is_running = true;
 
+  struct timespec timeout;
+  timeout.tv_nsec = 0;
+  timeout.tv_sec = 0;
   int new_events;
   struct kevent* curr_event;
 
   while (g_is_running) {
     if ((new_events = kevent(m_kqueue_, &m_change_list_[0],
                               m_change_list_.size(), m_returned_events_,
-                              1024, NULL)) == -1) {
-      ft::log(ServerManager::log_fd, "Select function failed");
-      throw std::runtime_error("kevent() Error");
+                              1024, &timeout)) == -1) {
+      ft::log(ServerManager::log_fd, "kqueue function failed\n");
+      // throw std::runtime_error("kevent() Error");
+      exitWebserv("kevent() ended\n");
     }
     m_change_list_.clear();
     for (int i = 0; i < new_events; ++i) {
       curr_event = &m_returned_events_[i];
+      std::cout << "Connections: " << m_connections_.size() << std::endl;
       if (curr_event->flags & EV_ERROR)
         throw std::runtime_error("socket error in kevent");
       else if (curr_event->filter == EVFILT_READ) {
@@ -185,6 +191,7 @@ void ServerManager::runServers(void) {
               if (connection_status == Connection::ON_WAIT ||
                   connection_status == Connection::ON_RECV)
                 curr_connection.RunRecvAndSolve();
+              std::cout << "RunRecvAndSolve done" << std::endl;
             } catch(ServerManager::IOError& e) {
               ft::log(ServerManager::log_fd, ft::getTimestamp() + e.location() + std::string("\n"));
               closeConnection(curr_event->ident);
@@ -192,6 +199,7 @@ void ServerManager::runServers(void) {
               ft::log(ServerManager::log_fd, ft::getTimestamp() + "detected some error" + std::string("\n"));
               closeConnection(curr_event->ident);
             }
+            break;
           }
           case FD_CGI: {
             Connection* curr_connection = m_cgi_connection_map_[curr_event->ident];
@@ -219,7 +227,7 @@ void ServerManager::runServers(void) {
 
             try {
               if (connection_status == Connection::TO_SEND ||
-                  connection_status == Connection::ON_SEND);
+                  connection_status == Connection::ON_SEND)
                 curr_connection.runSend();
             } catch(ServerManager::IOError& e) {
               ft::log(ServerManager::log_fd, ft::getTimestamp() + e.location() + std::string("\n"));
@@ -247,6 +255,8 @@ void ServerManager::runServers(void) {
             }
             break;
           }
+          default:
+            throw std::exception();
         }
       }
     }
@@ -272,7 +282,7 @@ void ServerManager::openLog(void) {
   std::string date = ft::getTimestamp();
   date = date.substr(1, date.size() - 2);
   std::string log_path = "log/" + date + "_log";
-  if ((ServerManager::log_fd = open(log_path.c_str(), O_WRONLY | O_CREAT, O_TRUNC, 0755)) == -1)
+  if ((ServerManager::log_fd = open(log_path.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0755)) == -1)
     return;
 }
 
@@ -312,7 +322,7 @@ void ServerManager::addCGIConnectionMap(int fd, Connection* connection) {
   m_cgi_connection_map_[fd] = connection;
 }
 
-void ServerManager::addServer_(ServerConfig new_server) {
+void ServerManager::addServer_(const ServerConfig& new_server) {
   int server_socket_fd;
 
   if ((server_socket_fd = socket(PF_INET, SOCK_STREAM, 0)) == -1)
@@ -337,6 +347,7 @@ void ServerManager::addServer_(ServerConfig new_server) {
   changeEvents_(m_change_list_, server_socket_fd, EVFILT_READ,
                   EV_ADD | EV_ENABLE, 0, 0, NULL);
   insertFd(server_socket_fd, FD_SERVER);
+  m_server_configs_[server_socket_fd] = new_server;
 }
 
 void ServerManager::changeEvents_(std::vector<struct kevent>& change_list,

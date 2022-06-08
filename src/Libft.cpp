@@ -6,7 +6,7 @@
 /*   By: jihoolee <jihoolee@student.42SEOUL.kr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/21 15:14:43 by bylee             #+#    #+#             */
-/*   Updated: 2022/05/31 17:11:23 by jihoolee         ###   ########.fr       */
+/*   Updated: 2022/06/08 20:07:13 by jihoolee         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -224,6 +224,7 @@ stringVectorToSet(std::vector<std::string> stringVector) {
 void log(int log_fd, std::string text) {
   if (log_fd != -1)
     write(log_fd, text.c_str(), text.size());
+  std::cout <<"log: " << log_fd << std::endl;
 }
 
 long long int abs(long long int num) {
@@ -408,22 +409,6 @@ int freeDoublestr(char ***doublestr_addr) {
   return (1);
 }
 
-std::string to_string(long long int n) {
-  long long int   nb;
-  std::string		str;
-
-  if (n == 0)
-    return ("0");
-  nb = n;
-  while (nb != 0) {
-    str.insert(str.begin(), static_cast<char>((ft::abs(nb % 10) + 48)));
-    nb = nb / 10;
-  }
-  if (n < 0)
-    str.insert(str.begin(), '-');
-  return (str);
-}
-
 std::string inet_ntoa(unsigned int address) {
   std::string ret;
 
@@ -431,6 +416,21 @@ std::string inet_ntoa(unsigned int address) {
   ret.append(ft::to_string ((address >> 8) & 0xFF) + ".");
   ret.append(ft::to_string ((address >> 16) & 0xFF) + ".");
   ret.append(ft::to_string ((address >> 24) & 0xFF) + ".");
+  return ret;
+}
+
+std::string containerToString(
+            std::vector<unsigned char> container, std::string sep) {
+  std::string ret;
+
+  for (std::vector<unsigned char>::iterator it = container.begin();
+        it != container.end();
+        ++it) {
+    ret.append(1, *it);
+    if (++it != container.end())
+      ret.append(sep);
+    --it;
+  }
   return ret;
 }
 }  //  namespace ft

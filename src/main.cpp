@@ -6,7 +6,7 @@
 /*   By: jihoolee <jihoolee@student.42SEOUL.kr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/17 16:04:25 by jihoolee          #+#    #+#             */
-/*   Updated: 2022/05/25 12:18:50 by jihoolee         ###   ########.fr       */
+/*   Updated: 2022/06/08 19:41:35 by jihoolee         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -15,6 +15,7 @@
 int main(int argc, char *argv[], char *env[]) {
   ServerManager manager;
 
+  manager.openLog();
   try {
     if (argc > 2)
       throw(std::invalid_argument(
