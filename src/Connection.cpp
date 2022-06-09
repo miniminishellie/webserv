@@ -6,7 +6,7 @@
 /*   By: jihoolee <jihoolee@student.42SEOUL.kr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/25 21:44:42 by jihoolee          #+#    #+#             */
-/*   Updated: 2022/06/08 21:04:31 by jihoolee         ###   ########.fr       */
+/*   Updated: 2022/06/09 19:53:37 by jihoolee         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -33,7 +33,8 @@ Connection::Connection(void)
       m_read_buffer_client_(),
       m_read_buffer_server_(),
       m_request_(),
-      m_response_() {
+      m_response_(),
+      m_child_pid_(-1) {
   this->m_last_request_at_.tv_sec = 0;
   this->m_last_request_at_.tv_usec = 0;
   set_m_last_request_at();
@@ -57,7 +58,8 @@ Connection::Connection(ServerManager* sm, ServerConfig* sc, int client_fd,
       m_read_buffer_client_(),
       m_read_buffer_server_(),
       m_request_(),
-      m_response_() {
+      m_response_(),
+      m_child_pid_(-1) {
   this->m_last_request_at_.tv_sec = 0;
   this->m_last_request_at_.tv_usec = 0;
   set_m_last_request_at();
@@ -81,7 +83,8 @@ Connection::Connection(const Connection &c)
       m_read_buffer_client_(c.m_read_buffer_client_),
       m_read_buffer_server_(c.m_read_buffer_server_),
       m_request_(c.m_request_),
-      m_response_(c.m_response_) {
+      m_response_(c.m_response_),
+      m_child_pid_(c.m_child_pid_) {
 }
 
 Connection &Connection::operator=(const Connection &operand) {
@@ -105,6 +108,7 @@ Connection &Connection::operator=(const Connection &operand) {
   m_read_buffer_server_ = operand.m_read_buffer_server_;
   m_request_ = operand.m_request_;
   m_response_ = operand.m_response_;
+  m_child_pid_ = operand.m_child_pid_;
   return *this;
 }
 
@@ -138,6 +142,7 @@ int Connection::get_m_send_data_size() const { return m_send_data_size_; }
 int Connection::get_m_readed_size() const { return m_readed_size_; }
 std::string Connection::get_m_read_buffer_client() const { return m_read_buffer_client_; }
 const Request& Connection::get_m_request() const { return m_request_; }
+int Connection::get_m_child_pid() const { return m_child_pid_; }
 
 /*setter function*/
 void Connection::set_m_status(Status status) { m_status_ = status; }
@@ -150,6 +155,8 @@ void Connection::set_m_wbuf_data_size(int size) { m_wbuf_data_size_ = size; }
 void Connection::set_m_sent_data_size(int size) { m_send_data_size_ = size; }
 void Connection::set_m_readed_size(int size) { m_readed_size_ = size; }
 void Connection::set_m_read_buffer_client(std::string read_buffer) { m_read_buffer_client_ = read_buffer; }
+
+void Connection::set_m_child_pid(int pid) { m_child_pid_ = pid; }
 
 void Connection::set_m_wbuf_for_send(std::string wbuf_string) {
   if (wbuf_string.empty())
@@ -794,6 +801,7 @@ void Connection::ExecuteCGI(const Request& request)
   }
 
   Closes(parent_write_fd[0], child_write_fd[1]);
+  m_child_pid_ = pid;
   if (fcntl(parent_write_fd[1], F_SETFL, O_NONBLOCK) == -1)
     throw std::runtime_error("write fnctl error");
   if (fcntl(child_write_fd[0], F_SETFL, O_NONBLOCK) == -1)
@@ -1010,7 +1018,7 @@ bool Connection::RunRecvAndSolve() {
     return true;
   } catch (ServerManager::IOError& e) {
     throw (e);
-  }catch (std::exception& e) {
+  } catch (std::exception& e) {
     ft::log(ServerManager::log_fd,
       std::string("[Failed][Request] Failed to create request because ")
         + e.what());
@@ -1024,7 +1032,7 @@ bool Connection::RunRecvAndSolve() {
     SolveRequest();
     return true;
   }
-  std::cout << "RecvRequest end" << std::endl;
+  std::cout << "RunRecvAndSolve end" << std::endl;
   return false;
 }
 
@@ -1062,11 +1070,11 @@ void Connection::sendFromWbuf() {
 }
 
 void Connection::writeSendResponseLog(const Response& response) {
-  std::string text = ft::getTimestamp() + "[Sended][Response][Server:" + m_server_config_->get_m_server_name() + "][" \
+  std::string text = ft::getTimestamp() + "[Sent][Response][Server:" + m_server_config_->get_m_server_name() + "][" \
   + ft::to_string(response.get_m_status_code()) + "][" + response.get_m_status_description() + "][CFD:" \
   + ft::to_string(response.get_m_connection()->get_m_client_fd()) + "][headers:" \
   + ft::to_string(response.get_m_headers().size()) + "][body:" + ft::to_string(response.get_m_content().size()) + "]";
-  text.append(" Response sended\n");
+  text.append(" Response sent\n");
   ft::log(ServerManager::log_fd, text);
 }
 
@@ -1137,7 +1145,7 @@ bool Connection::runExecute(int mode) {
       writeSavedBodyToCGIScript();
   }
 
-  waitpid(-1, &stat, WNOHANG);
+  waitpid(m_child_pid_, &stat, WNOHANG);
   if (WIFEXITED(stat) && read_end == true && m_write_to_server_fd_ == -1) {
     if (from_child_fd != -1) {
       close(from_child_fd);
@@ -1147,6 +1155,7 @@ bool Connection::runExecute(int mode) {
     std::string body = m_read_buffer_server_;
     m_read_buffer_server_.clear();
     m_wbuf_.clear();
+    m_child_pid_ = -1;
     if (m_request_.get_m_uri_type() == Request::CGI) {
       int body_size = m_request_.get_m_locationconfig()->get_m_limit_client_body_size();
       if (body.size() > body_size + body.find("\r\n\r\n") + 4) {

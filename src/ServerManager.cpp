@@ -6,7 +6,7 @@
 /*   By: jihoolee <jihoolee@student.42SEOUL.kr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/17 18:42:34 by jihoolee          #+#    #+#             */
-/*   Updated: 2022/06/08 21:12:06 by jihoolee         ###   ########.fr       */
+/*   Updated: 2022/06/09 19:15:55 by jihoolee         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -161,8 +161,10 @@ void ServerManager::runServers(void) {
     for (int i = 0; i < new_events; ++i) {
       curr_event = &m_returned_events_[i];
       std::cout << "Connections: " << m_connections_.size() << std::endl;
-      if (curr_event->flags & EV_ERROR)
-        throw std::runtime_error("socket error in kevent");
+      if (curr_event->flags & EV_ERROR) {
+        throw std::runtime_error(("socket error in kevent with fd:"
+                  + ft::to_string(curr_event->ident)).c_str());
+      }
       else if (curr_event->filter == EVFILT_READ) {
         switch (m_fd_set_[curr_event->ident]) {
           case FD_SERVER: {
@@ -309,10 +311,12 @@ void ServerManager::closeConnection(int client_fd) {
   if (cgi_read_fd > 0) {
     this->changeEvents_(m_change_list_, cgi_read_fd, EVFILT_READ, EV_DELETE, 0, 0, NULL);
     close(cgi_read_fd);
+    m_fd_set_.erase(cgi_read_fd);
   }
   if (cgi_write_fd > 0) {
     this->changeEvents_(m_change_list_, cgi_write_fd, EVFILT_WRITE, EV_DELETE, 0, 0, NULL);
     close(cgi_write_fd);
+    m_fd_set_.erase(cgi_write_fd);
   }
   m_connections_.erase(client_fd);
   m_fd_set_.erase(client_fd);
@@ -383,14 +387,15 @@ bool ServerManager::acceptNewConnection_(int server_socket_fd) {
   // setsockopt(client_fd, SOL_SOCKET, SO_SNDTIMEO, (struct timeval*)&tv, sizeof(struct timeval));
   addEvent(client_fd, EVFILT_READ, EV_ADD | EV_ENABLE,
             0, 0, NULL);
-  // addEvent(client_fd, EVFILT_WRITE, EV_ADD | EV_ENABLE,
-  //           0, 0, NULL);
   client_ip = ft::inet_ntoa(client_addr.sin_addr.s_addr);
   client_port = static_cast<int>(client_addr.sin_port);
   m_connections_[client_fd] =
     Connection(this, &this->m_server_configs_[server_socket_fd],
                 client_fd, client_ip, client_port);
   insertFd(client_fd, FD_CLIENT);
+  std::cout << "Client Connection with fd: " << client_fd << " created! \n";
+  std::cout << "client_ip: " << client_ip << "\n";
+  std::cout << "client_port: " << client_port << "\n";
   return true;
 }
 

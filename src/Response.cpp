@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Response.cpp                                       :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: plee <plee@student.42.fr>                  +#+  +:+       +#+        */
+/*   By: jihoolee <jihoolee@student.42SEOUL.kr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/28 15:27:34 by plee              #+#    #+#             */
-/*   Updated: 2022/05/30 20:46:23 by plee             ###   ########.fr       */
+/*   Updated: 2022/06/09 15:08:05 by jihoolee         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -63,7 +63,7 @@ std::map<int, std::string> make_status () {
   status_map[40007] = "Bad Request: Failed to get start line(recv function failure)";
   status_map[40008] = "Bad Request: header line size is greater than request header limit size";
   status_map[40009] = "Bad Request: Failed to get header line(recv function failure)";
-  status_map[40010] = "Bad Request: Unvalid Header(maybe not found ':')";
+  status_map[40010] = "Bad Request: Invalid Header(maybe not found ':')";
   status_map[40011] = "Bad Request: Not Found host header";
   status_map[40012] = "Bad Request: In general request, failed to read content by large content-length";
   status_map[40013] = "Bad Request: In general request, failed to read content by normal content-length";
@@ -75,11 +75,11 @@ std::map<int, std::string> make_status () {
   status_map[40019] = "Bad Request: In chunked request, failed to read content by large content-length";
   status_map[40020] = "Bad Request: In chunked request, failed to read content by normal content-length";
   status_map[40021] = "Bad Request: In chunked request, readed-size and content-length value is not equal";
-  status_map[40022] = "Bad Request: Credential Form unvalid";
+  status_map[40022] = "Bad Request: Credential Form invalid";
   status_map[40023] = "Bad Request: Not CGI-prgoram, POST method, Content-Length is not 0";
-  
+
   status_map[40101] = "Unauthorized";
-  status_map[40301] = "Forbidden: Credential Content unvalid";	
+  status_map[40301] = "Forbidden: Credential Content invalid";
   status_map[40401] = "Not Found: No suitable location";
   status_map[40402] = "Not Found: Requested uri is not in server";
   status_map[40403] = "Not Found: Autoindex off, index file is not found";
@@ -192,7 +192,7 @@ void Response::clear() {
 }
 
 /*member function*/
-std::string Response::GetString() const {	
+std::string Response::GetString() const {
   std::string message;
   std::map<std::string, std::string>::const_iterator it = this->m_headers_.begin();
 

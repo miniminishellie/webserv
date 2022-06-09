@@ -6,7 +6,7 @@
 /*   By: jihoolee <jihoolee@student.42SEOUL.kr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/18 21:23:44 by jihoolee          #+#    #+#             */
-/*   Updated: 2022/06/08 14:46:01 by jihoolee         ###   ########.fr       */
+/*   Updated: 2022/06/09 19:50:03 by jihoolee         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -66,6 +66,8 @@ class Connection {
   std::string        get_m_read_buffer_client() const;
   const Request&     get_m_request() const;
 
+  int         get_m_child_pid() const;
+
   /* setter function*/
   void set_m_status(Status status);
   void set_m_client_fd(int fd);
@@ -82,6 +84,8 @@ class Connection {
   void set_m_read_buffer_client(std::string read_buffer);
 
   void set_m_wbuf_for_send(std::string wbuf_string = "");
+
+  void set_m_child_pid(int pid);
 
   /* member function */
   bool  RunRecvAndSolve();
@@ -152,5 +156,6 @@ class Connection {
   std::string     m_read_buffer_server_;
   Request         m_request_;
   Response        m_response_;
+  int             m_child_pid_;
 };  //  class Connection
 #endif  //  CONNECTION_HPP
