@@ -6,7 +6,7 @@
 /*   By: jihoolee <jihoolee@student.42SEOUL.kr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/25 21:44:42 by jihoolee          #+#    #+#             */
-/*   Updated: 2022/06/09 19:53:37 by jihoolee         ###   ########.fr       */
+/*   Updated: 2022/06/09 22:11:18 by jihoolee         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -351,18 +351,21 @@ bool Connection::ParseHeader() {
         throw 40010;
       return true;
     }
-    if (IsValidHeader(line))
+    if (!IsValidHeader(line))
       throw 40010;
     m_request_.AddHeader(line);
   }
   return false;
 }
 
-bool Connection::IsRequestHasBody() {  // 수정 필요함
-  if (m_request_.get_m_method() == Request::POST) {
+bool Connection::IsRequestHasBody() {
+  Request::Method method = m_request_.get_m_method();
+
+  if (method == Request::POST || method == Request::PUT) {
     if (m_request_.get_m_transfer_type() == Request::CHUNKED)
       return true;
-    if (ft::hasKey(m_request_.get_m_headers(), "Content-Length") && m_request_.get_m_content_length() > 0)
+    if (ft::hasKey(m_request_.get_m_headers(), "Content-Length") &&
+        m_request_.get_m_content_length() > 0)
       return true;
   }
   return false;
@@ -374,7 +377,8 @@ int Connection::RecvBody(char *buf, int buf_size) {
 
   // if (m_request_.get_m_method() == Request::POST && m_request_.get_m_transfer_type() == Request::CHUNKED)
   //   return 0;
-  if (m_request_.get_m_method() != Request::POST)
+  if (m_request_.get_m_method() != Request::POST &&
+      m_request_.get_m_method() != Request::PUT)
     return 0;
   if ((read_size = recv(m_client_fd_, buf, buf_size, 0)) > 0)
     return read_size;
@@ -469,7 +473,8 @@ bool Connection::ReadChunkedBody() {
 bool Connection::ParseBody() {
   // if (m_request_.get_m_method() == Request::POST && m_request_.get_m_transfer_type() == Request::CHUNKED)
   //   return true;
-  if (m_request_.get_m_method() != Request::POST)
+  if (m_request_.get_m_method() != Request::POST &&
+      m_request_.get_m_method() != Request::PUT)
     return true;
   if (m_request_.get_m_transfer_type() == Request:: GENERAL)
     return ReadGeneralBody();
@@ -503,7 +508,7 @@ void Connection::RecvRequest(void) {
     phase = Request::ON_HEADER;
   if (phase == Request::ON_HEADER && ParseHeader()) {
     m_request_.set_m_phase(phase = Request::ON_BODY);
-    if (!IsRequestHasBody())
+    if (IsRequestHasBody())
       return ;
   }
   if (phase == Request::ON_BODY && (read_size = RecvBody(buf, sizeof(buf))) > 0)
@@ -979,12 +984,16 @@ void Connection::SolveRequest() {
     return ExecuteCGI(m_request_);
   else if (method == Request::GET)
     ExecuteGet(m_request_);
+  else if (method == Request::HEAD)
+    ExecuteHead(m_request_);
   else if (method == Request::POST)
     ExecutePost(m_request_);
+  else if (method == Request::PUT)
+    ExecutePut(m_request_);
   else if (method == Request::DELETE)
     ExecuteDelete(m_request_);
   else
-    throw (400);
+    CreateResponse(400000);
 }
 
 void Connection::ExecuteDelete(const Request& request) {
@@ -992,6 +1001,56 @@ void Connection::ExecuteDelete(const Request& request) {
     CreateResponse(204);
   else
     return CreateResponse(204);
+}
+
+void Connection::ExecuteHead(const Request& request) {
+  std::string path = request.get_m_path_translated();
+  std::string body;
+  size_t client_body_size_limit =
+      m_request_.get_m_locationconfig()->get_m_limit_client_body_size();
+
+  try {
+    body = ft::getStringFromFile(path, client_body_size_limit);
+  } catch (std::overflow_error& e) {
+    return CreateResponse(41305);
+  }
+
+  headers_t headers(1, GetMimeTypeHeader(path));
+
+  if (headers[0].empty())
+    return CreateResponse(41502);
+  headers.push_back(GetLastModifiedHeader(path));
+  headers.push_back("content-length:" + ft::to_string(body.size()));
+  return CreateResponse(200, headers);
+}
+
+void Connection::ExecutePut(const Request& request) {
+  int fd;
+  struct stat buf;
+  int count;
+
+  stat(request.get_m_script_translated().c_str(), &buf);
+
+  headers_t headers(1, GetMimeTypeHeader(request.get_m_path_translated()));
+
+  if ((fd = open(request.get_m_script_translated().c_str(),
+                  O_RDWR | O_CREAT | O_TRUNC, 0777)) == -1)
+    return CreateResponse(50003);
+  if (!request.get_m_content().empty() &&
+        (count = write(fd, request.get_m_script_translated().c_str(),
+                        request.get_m_content().size()) <= 0)) {
+    close(fd);
+    if (count == 0 || count == -1)
+      throw ServerManager::IOError(("IO error detected to write body in executePut"
+                                    + ft::to_string(fd)).c_str());
+    return CreateResponse(50004);
+  }
+  close(fd);
+  if (S_ISREG(buf.st_mode))
+    return CreateResponse(204);
+  headers.push_back("Location:" + m_server_config_->get_m_host()
+                    + "/" + request.get_m_uri());
+  return CreateResponse(201, headers, request.get_m_content());
 }
 
 void Connection::WriteCreateNewRequestLog(const Request& request)

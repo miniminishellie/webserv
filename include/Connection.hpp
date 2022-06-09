@@ -6,7 +6,7 @@
 /*   By: jihoolee <jihoolee@student.42SEOUL.kr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/18 21:23:44 by jihoolee          #+#    #+#             */
-/*   Updated: 2022/06/09 19:50:03 by jihoolee         ###   ########.fr       */
+/*   Updated: 2022/06/09 21:58:28 by jihoolee         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -125,6 +125,9 @@ class Connection {
   void ExecveCGI(const Request& request, char **env, int *parent_write_fd, int *child_write_fd);
   void ExecutePost(const Request& request);
   void ExecuteDelete(const Request& request);
+
+  void ExecuteHead(const Request& request);
+  void ExecutePut(const Request& request);
 
   bool runSend();
   void sendFromWbuf();
