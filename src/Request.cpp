@@ -6,7 +6,7 @@
 /*   By: jihoolee <jihoolee@student.42SEOUL.kr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/26 14:54:39 by jihoolee          #+#    #+#             */
-/*   Updated: 2022/06/08 21:01:20 by jihoolee         ###   ########.fr       */
+/*   Updated: 2022/06/10 15:57:28 by jihoolee         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -162,6 +162,10 @@ bool Request::ParseMethod(std::string method) {
     m_method_ = GET;
   else if (method == "POST")
     m_method_ = POST;
+  else if (method == "HEAD")
+    m_method_ = HEAD;
+  else if (method == "PUT")
+    m_method_ = PUT;
   else if (method == "DELETE")
     m_method_ = DELETE;
   else

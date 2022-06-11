@@ -6,7 +6,7 @@
 /*   By: jihoolee <jihoolee@student.42SEOUL.kr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/20 22:17:14 by bylee             #+#    #+#             */
-/*   Updated: 2022/06/08 20:01:09 by jihoolee         ###   ########.fr       */
+/*   Updated: 2022/06/11 22:03:25 by jihoolee         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -21,6 +21,7 @@
 # include <arpa/inet.h>
 # include <iostream>
 # include <map>
+# include <set>
 # include <vector>
 # include <string>
 # include <exception>
@@ -49,6 +50,15 @@ class ServerManager {
   */
   enum FdType { FD_SERVER, FD_CLIENT, FD_CGI};
   enum CGIMode {CGI_READ, CGI_WRITE};
+  enum SetType {
+    WRITE_SET,
+    WRITE_COPY_SET,
+    READ_SET,
+    READ_COPY_SET,
+    ERROR_SET,
+    ERROR_COPY_SET,
+    ALL_SET
+  };
   ServerManager();
   ServerManager(const ServerManager& ref);
 
@@ -61,19 +71,18 @@ class ServerManager {
   void  createServers(const std::string& config_file_path, char* env[]);
   void  exitWebserv(const std::string& error_message);
   void  runServers(void);
-  void  insertFd(int fd, FdType type);
-  void  addEvent(uintptr_t ident,
-                    int16_t filter,
-                    uint16_t flags,
-                    uint32_t fflags,
-                    intptr_t data,
-                    void* udata);
 
   void  openLog(void);
   int   getUnusedConnectionFd(void);
   void  closeConnection(int client_fd);
 
-  void  addCGIConnectionMap(int fd, Connection* connection);
+  void  fdSet(int fd, SetType fdset);
+  void  fdZero(SetType fdset);
+  void  fdClear(int fd, SetType fdset);
+  bool  fdIsset(int fd, SetType fdset);
+  void  fdCopy(SetType fdset);
+  void  resetMaxFd(int new_max_fd = -1);
+
 
   class IOError: public std::exception{
    public:
@@ -93,13 +102,6 @@ class ServerManager {
 
  private:
   void  addServer_(const ServerConfig& new_server);
-  void  changeEvents_(std::vector<struct kevent>& change_list,
-                      uintptr_t ident,
-                      int16_t filter,
-                      uint16_t flags,
-                      uint32_t fflags,
-                      intptr_t data,
-                      void* udata);
   bool  acceptNewConnection_(int server_socket_fd);
 
   void  writeCreateServerLog_(void);
@@ -117,12 +119,20 @@ class ServerManager {
   WebservConfig                       m_config_;
   std::map<int, ServerConfig>         m_server_configs_;
   std::map<int, Connection>           m_connections_;
-  std::map<int, Connection*>          m_cgi_connection_map_;
 
-  int                                 m_kqueue_;
-  std::map<int, FdType>               m_fd_set_;  //  ->필요한지 한번 생각해보자
-  struct kevent                       m_returned_events_[1024];
-  std::vector<struct kevent>          m_change_list_;
+
+  std::set<int> m_fdset_;
+  int           m_max_fd_;
+  fd_set        m_read_set_;
+  fd_set        m_read_copy_set_;
+  fd_set        m_write_set_;
+  fd_set        m_write_copy_set_;
+  fd_set        m_error_copy_set_;
+
+//   int                                 m_kqueue_;
+//   std::map<int, FdType>               m_fd_set_;  //  ->필요한지 한번 생각해보자
+//   struct kevent                       m_returned_events_[1024];
+//   std::vector<struct kevent>          m_change_list_;
 };  // class ServerManager
 
 #endif  //  SERVER_MANGER_HPP_

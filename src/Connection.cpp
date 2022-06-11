@@ -6,7 +6,7 @@
 /*   By: jihoolee <jihoolee@student.42SEOUL.kr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/25 21:44:42 by jihoolee          #+#    #+#             */
-/*   Updated: 2022/06/09 22:11:18 by jihoolee         ###   ########.fr       */
+/*   Updated: 2022/06/11 16:57:49 by jihoolee         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -297,16 +297,19 @@ int Connection::RecvWithoutBody(char *buf, int buf_size) {
   int recv_len;
 
   if ((recv_len = recv(m_client_fd_, buf, buf_size, MSG_PEEK)) > 0) {
-      while(i < recv_len) {
-        if (buf[i] == '\r' && i + 3 < recv_len && buf[i + 1] == '\n' && buf[i + 2] == '\r' && buf[i + 3] == '\n')
-          break;
-        i++;
-      }
-      if (i == recv_len)
-        return 0;
-      else if ((recv_len = recv(m_client_fd_, buf, i + 4, 0)) > 0)
-        return i + 4;
+    while(i < recv_len) {
+      if (buf[i] == '\r' && i + 3 < recv_len && buf[i + 1] == '\n' && buf[i + 2] == '\r' && buf[i + 3] == '\n')
+        break;
+      i++;
+    }
+    std::cout << "recv_len:" << recv_len << std::endl;
+    if (i == recv_len)
+      return 0;
+    else if ((recv_len = recv(m_client_fd_, buf, i + 4, 0)) > 0)
+      return i + 4;
   }
+  std::cout << "recv_len: " << recv_len << std::endl;
+  std::cout << errno << std::endl;
   if (recv_len  == -1)
     throw ServerManager::IOError(
       ("IO error detected to read reqeust message without body for client "
@@ -500,26 +503,33 @@ void Connection::RecvRequest(void) {
   char buf[BUFFER_SIZE];
   int read_size = BUFFER_SIZE - m_read_buffer_client_.size();
   Request::Phase phase = m_request_.get_m_phase();
-  m_status_ = ON_RECV;
 
+  m_status_ = ON_RECV;
+  std::cout << "RecvRequest 1" << std::endl;
+  // std::cout << "buf: " << buf << "\n\n";
   if (phase == Request::READY && (read_size = RecvWithoutBody(buf, sizeof(buf))) > 0)
     addReadbufferClient(buf, read_size);
+  std::cout << "RecvRequest 2" << std::endl;
+  // std::cout << "buf: " << buf << "\n\n";
   if (phase == Request::READY && ParseStartLine())
     phase = Request::ON_HEADER;
+  std::cout << "RecvRequest 3" << std::endl;
   if (phase == Request::ON_HEADER && ParseHeader()) {
     m_request_.set_m_phase(phase = Request::ON_BODY);
     if (IsRequestHasBody())
       return ;
   }
+  std::cout << "RecvRequest 4" << std::endl;
   if (phase == Request::ON_BODY && (read_size = RecvBody(buf, sizeof(buf))) > 0)
     addReadbufferClient(buf, read_size);
+  std::cout << "RecvRequest 5" << std::endl;
   if (phase == Request::ON_BODY && ParseBody())
     phase = Request::COMPLETE;
+  std::cout << "RecvRequest 6" << std::endl;
   if (phase == Request::COMPLETE)
     set_m_last_request_at();
+  std::cout << "RecvRequest 7" << std::endl;
   m_request_.set_m_phase(phase);
-  std::cout << "End of RecvRequest" << std::endl;
-  std::cout << "request phase: " << m_request_.get_m_phase() << std::endl;
 }
 
 void Connection::ReportCreateNewRequestLog(int status)
@@ -580,7 +590,6 @@ void Connection::makeResponse401() {
 }
 
 void Connection::CreateResponse(int status, headers_t headers, std::string body) {
-  std::cout << "CreateResponse" << std::endl;
   if (status >= 40000) {
     ReportCreateNewRequestLog(status);
     status /= 100;
@@ -955,7 +964,6 @@ bool isValidCredentialContent(LocationConfig* location,
 }  //  anonymous namespace
 
 void Connection::SolveRequest() {
-  std::cout << "SolveRequest start" << std::endl;
   LocationConfig* locationconfig = m_request_.get_m_locationconfig();
   Request::Method method = m_request_.get_m_method();
   std::string methodString = m_request_.get_m_method_to_string();
@@ -977,7 +985,6 @@ void Connection::SolveRequest() {
         return CreateResponse(40301);
     }
   }
-  std::cout << "SolveRequest mid" << std::endl;
   if (m_request_.get_m_uri_type() == Request::DIRECTORY)
     return ExecuteAutoindex(m_request_);
   else if (m_request_.get_m_uri_type() == Request::CGI)
@@ -1055,7 +1062,6 @@ void Connection::ExecutePut(const Request& request) {
 
 void Connection::WriteCreateNewRequestLog(const Request& request)
 {
-  std::cout << "여기냐 시발" << std::endl;
   if (request.get_m_method() != Request::POST)
     return ;
   int cfd = request.get_m_connection()->get_m_client_fd();
@@ -1084,14 +1090,12 @@ bool Connection::RunRecvAndSolve() {
     CreateResponse(50001);
     return true;
   }
-  std::cout << "RecvRequest done, new response to do" << std::endl;
   if (m_request_.get_m_phase() == Request::COMPLETE) {
     WriteCreateNewRequestLog(m_request_);
     m_status_ = ON_EXECUTE;
     SolveRequest();
     return true;
   }
-  std::cout << "RunRecvAndSolve end" << std::endl;
   return false;
 }
 
@@ -1104,27 +1108,39 @@ bool Connection::runSend() {
   }
   sendFromWbuf();
   if (m_wbuf_data_size_ == m_send_data_size_) {
+    std::cout << "send" << std::endl;
     m_status_ = ON_WAIT;
     m_server_manager_->addEvent(m_client_fd_, EVFILT_WRITE, EV_DELETE, 0, 0, NULL);
     writeSendResponseLog(m_response_);
-    if (m_response_.get_m_status_code() / 100 != 2)
-      throw ServerManager::IOError("send error response.");
-    else
+    // if (m_response_.get_m_status_code() / 100 != 2)
+    //   throw ServerManager::IOError("send error response.");
+    // else
       this->clear();
   }
   return m_wbuf_data_size_ == m_send_data_size_;
 }
 
-void Connection::sendFromWbuf() {
-  int count = m_wbuf_data_size_ - m_send_data_size_;
+# include <fstream>
 
-  if (count > BUFFER_SIZE)
-    count = BUFFER_SIZE;
-  count = send(m_client_fd_, m_wbuf_.c_str() + m_send_data_size_, count, 0);
-  if (count == 0 || count == -1)
+void Connection::sendFromWbuf() {
+  int size_to_send = m_wbuf_data_size_ - m_send_data_size_;
+  int count = -1;
+
+  if (size_to_send > BUFFER_SIZE)
+    size_to_send = BUFFER_SIZE;
+  std::cout << "send to client_fd: " << m_client_fd_ << std::endl;
+
+  std::ofstream output("output", std::ios::binary);
+
+  output.write(m_wbuf_.data(), size_to_send);
+  output.close();
+  count = send(m_client_fd_, m_wbuf_.c_str() + m_send_data_size_, size_to_send, 0);
+    std::cout << "send count" << count << std::endl;
+  if (count == 0 || count == -1) {
     throw ServerManager::IOError(
       ("IOError detected to send respoonse message to cient"
       + ft::to_string(m_client_fd_)).c_str());
+  }
   m_send_data_size_ += count;
 }
 
