@@ -6,7 +6,7 @@
 /*   By: jihoolee <jihoolee@student.42SEOUL.kr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/20 22:17:14 by bylee             #+#    #+#             */
-/*   Updated: 2022/06/11 22:03:25 by jihoolee         ###   ########.fr       */
+/*   Updated: 2022/06/12 17:07:43 by jihoolee         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -103,6 +103,7 @@ class ServerManager {
  private:
   void  addServer_(const ServerConfig& new_server);
   bool  acceptNewConnection_(int server_socket_fd);
+  void  closeOldConnection_();
 
   void  writeCreateServerLog_(void);
   void  writeCloseConnectionLog_(int client_fd);

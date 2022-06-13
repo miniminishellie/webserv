@@ -6,7 +6,7 @@
 /*   By: jihoolee <jihoolee@student.42SEOUL.kr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/18 21:23:44 by jihoolee          #+#    #+#             */
-/*   Updated: 2022/06/09 21:58:28 by jihoolee         ###   ########.fr       */
+/*   Updated: 2022/06/12 17:09:38 by jihoolee         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -137,7 +137,13 @@ class Connection {
   void addReadbufferServer(const char* str, int size);
   void writeChunkedBodyToCGIScript();
   void writeSavedBodyToCGIScript();
-  bool runExecute(int mode);
+  bool runExecute();
+
+  bool hasSendWork();
+  bool hasExecuteWork();
+  bool hasRequest();
+
+  bool isTimeOver() const;
 
  private:
   ServerManager*  m_server_manager_;

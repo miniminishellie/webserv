@@ -6,7 +6,7 @@
 /*   By: jihoolee <jihoolee@student.42SEOUL.kr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/17 18:42:34 by jihoolee          #+#    #+#             */
-/*   Updated: 2022/06/11 22:09:08 by jihoolee         ###   ########.fr       */
+/*   Updated: 2022/06/13 16:43:07 by jihoolee         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -19,32 +19,31 @@ ServerManager::ServerManager(void)
     : m_config_(),
       m_server_configs_(),
       m_connections_(),
-      m_cgi_connection_map_(),
-      m_kqueue_(-1),
-      m_fd_set_(),
-      m_change_list_() {
-  memset(m_returned_events_, 0, sizeof(struct kevent) * 1024);
+      m_fdset_(),
+      m_max_fd_(-1) {
+  FD_ZERO(&m_read_set_);
+  FD_ZERO(&m_read_copy_set_);
+  FD_ZERO(&m_write_set_);
+  FD_ZERO(&m_write_copy_set_);
+  FD_ZERO(&m_error_copy_set_);
 }
 
 ServerManager::ServerManager(const ServerManager& ref)
     : m_config_(ref.m_config_),
       m_server_configs_(ref.m_server_configs_),
       m_connections_(ref.m_connections_),
-      m_cgi_connection_map_(),
-      m_kqueue_(ref.m_kqueue_),
-      m_fd_set_(),
-      m_change_list_(ref.m_change_list_) {
-  memcpy(m_returned_events_, ref.m_returned_events_,
-          sizeof(struct kevent) * 1024);
-}
+      m_fdset_(ref.m_fdset_),
+      m_max_fd_(ref.m_max_fd_),
+      m_read_set_(ref.m_read_set_),
+      m_read_copy_set_(ref.m_read_copy_set_),
+      m_write_set_(ref.m_write_set_),
+      m_write_copy_set_(ref.m_write_copy_set_),
+      m_error_copy_set_(ref.m_error_copy_set_) { }
 
 ServerManager::~ServerManager(void) {
   m_server_configs_.clear();
   m_connections_.clear();
-  m_cgi_connection_map_.clear();
-  m_kqueue_ = -1;
-  m_fd_set_.clear();
-  m_change_list_.clear();
+  m_fdset_.clear();
 }
 
 ServerManager& ServerManager::operator=(const ServerManager& ref) {
@@ -53,12 +52,13 @@ ServerManager& ServerManager::operator=(const ServerManager& ref) {
   m_config_ = ref.m_config_;
   m_server_configs_ = ref.m_server_configs_;
   m_connections_ = ref.m_connections_;
-  m_cgi_connection_map_ = ref.m_cgi_connection_map_;
-  m_kqueue_ = ref.m_kqueue_;
-  m_fd_set_ = ref.m_fd_set_;
-  memcpy(m_returned_events_, ref.m_returned_events_,
-          sizeof(struct kevent) * 1024);
-  m_change_list_ = ref.m_change_list_;
+  m_fdset_ = ref.m_fdset_;
+  m_max_fd_ = ref.m_max_fd_;
+  m_read_set_ = ref.m_read_set_;
+  m_read_copy_set_ = ref.m_read_copy_set_;
+  m_write_set_ = ref.m_write_set_;
+  m_write_copy_set_ = ref.m_write_copy_set_;
+  m_error_copy_set_ = ref.m_error_copy_set_;
   return *this;
 }
 
@@ -148,16 +148,39 @@ void ServerManager::runServers(void) {
 
   resetMaxFd();
   while (g_is_running) {
+    fdCopy(ALL_SET);
     if ((count = select(this->m_max_fd_ + 1, &m_read_copy_set_,
                         &m_write_copy_set_, NULL, &timeout)) == -1) {
       ft::log(ServerManager::log_fd, "Select function failed\n");
       throw std::runtime_error("select error");
-    }
-    else if (count == 0)
+    } else if (count == 0) {
       continue;
+    }
+    std::map<int, Connection>::iterator it = m_connections_.begin();
+
+    while (it != m_connections_.end()) {
+      std::map<int, Connection>::iterator it2 = it++;
+      int fd = it2->first;
+
+      try {
+        if (it2->second.hasSendWork()) {
+          it2->second.runSend();
+        } else if (it2->second.hasExecuteWork()) {
+          it2->second.runExecute();
+        } else if (it2->second.hasRequest()) {
+          it2->second.RunRecvAndSolve();
+        }
+      } catch (IOError& e) {
+        ft::log(log_fd, ft::getTimestamp() + e.location() + std::string("\n"));
+        closeConnection(fd);
+      } catch (...) {
+        ft::log(log_fd, ft::getTimestamp() + "detected unknown error\n");
+        closeConnection(fd);
+      }
+    }
     for (std::map<int, ServerConfig>::iterator it = m_server_configs_.begin();
         it != m_server_configs_.end(); ++it) {
-      if (fdIsset(it->first, READ_SET)) {
+      if (fdIsset(it->first, READ_COPY_SET)) {
         if (m_connections_.size() + m_server_configs_.size() >= 1024) {
           int fd = getUnusedConnectionFd();
 
@@ -171,156 +194,12 @@ void ServerManager::runServers(void) {
                       + "][Host: "
                       + m_server_configs_[it->first].get_m_host()
                       + "] Failed to create new connection.\n");
+          throw std::runtime_error("acceptNewConnection error");
         }
       }
     }
-    for (std::map<int, Connection>::iterator it = m_connections_.begin();
-          it != m_connections_.end(); ++it) {
-      try {
-
-      }
-    }
+    closeOldConnection_();
     resetMaxFd();
-  }
-  exitWebserv("Webserv exited\n");
-}
-
-void ServerManager::runServers(void) {
-  signal(SIGINT, changeSignal);
-  g_is_running = true;
-
-  struct timespec timeout;
-  timeout.tv_nsec = 0;
-  timeout.tv_sec = 0;
-  int new_events;
-  struct kevent* curr_event;
-
-  while (g_is_running) {
-    if ((new_events = kevent(m_kqueue_, &m_change_list_[0],
-                              m_change_list_.size(), m_returned_events_,
-                              1024, &timeout)) == -1) {
-      ft::log(ServerManager::log_fd, "kqueue function failed\n");
-      // throw std::runtime_error("kevent() Error");
-      exitWebserv("kevent() ended\n");
-    }
-    m_change_list_.clear();
-    if (new_events)
-      std::cout << "\n\nnew_events: " << new_events << std::endl;
-    for (int i = 0; i < new_events; ++i) {
-      std::cout << "Event no." << i << std::endl;
-      curr_event = &m_returned_events_[i];
-      std::cout << "Connections: " << m_connections_.size() << std::endl;
-      if (curr_event->flags & EV_ERROR) {
-        throw std::runtime_error(("socket error in kevent with fd:"
-                  + ft::to_string(curr_event->ident)).c_str());
-      }
-      else if (curr_event->filter == EVFILT_READ) {
-        std::cout << "case 1" << std::endl;
-         switch (m_fd_set_[curr_event->ident]) {
-          case FD_SERVER: {
-            std::cout << "case 1 - 1" << std::endl;
-            if (m_connections_.size() + m_server_configs_.size() >= 1024) {
-              int fd = getUnusedConnectionFd();
-
-              if (fd == -1)
-                continue;
-              closeConnection(fd);
-            }
-            if (!acceptNewConnection_(curr_event->ident)) {
-              ft::log(ServerManager::log_fd, "[Failed][Connection][Server:"
-                      + m_server_configs_[curr_event->ident].get_m_server_name()
-                      + "][Host: "
-                      + m_server_configs_[curr_event->ident].get_m_host()
-                      + "] Failed to create new connection.\n");
-              std::cout << "Creating new connection on server " << curr_event->ident
-                        << " failed" << std::endl;
-              exit(1);
-              continue;
-            }
-            break;
-          }
-          case FD_CLIENT: {
-            std::cout << "case 1 - 2" << std::endl;
-            Connection& curr_connection = m_connections_[curr_event->ident];
-            Connection::Status connection_status = curr_connection.get_m_status();
-
-            try {
-              if (connection_status == Connection::ON_WAIT ||
-                  connection_status == Connection::ON_RECV)
-                curr_connection.RunRecvAndSolve();
-            } catch(ServerManager::IOError& e) {
-              ft::log(ServerManager::log_fd, ft::getTimestamp() + "[at FD_CLIENT read]" + e.location() + std::string("\n"));
-              closeConnection(curr_event->ident);
-            } catch (...) {
-              ft::log(ServerManager::log_fd, ft::getTimestamp() + "detected some error" + std::string("\n"));
-              closeConnection(curr_event->ident);
-            }
-            break;
-          }
-          case FD_CGI: {
-            std::cout << "case 1 - 3" << std::endl;
-            Connection* curr_connection = m_cgi_connection_map_[curr_event->ident];
-            Connection::Status connection_status = curr_connection->get_m_status();
-
-            try {
-              if (connection_status == Connection::ON_EXECUTE &&
-                  curr_connection->get_m_read_from_server_fd() != 1)
-                curr_connection->runExecute(CGI_READ);
-            } catch(ServerManager::IOError& e) {
-              ft::log(ServerManager::log_fd, ft::getTimestamp() + "[at FD_CGI read]" + e.location() + std::string("\n"));
-              closeConnection(curr_event->ident);
-            } catch (...) {
-              ft::log(ServerManager::log_fd, ft::getTimestamp() + "detected some error" + std::string("\n"));
-              closeConnection(curr_event->ident);
-            }
-            break;
-          }
-        }
-      } else if (curr_event->filter == EVFILT_WRITE) {
-        std::cout << "case 2" << std::endl;
-        switch (m_fd_set_[curr_event->ident]) {
-          case FD_CLIENT: {
-            std::cout << "case 2 - 1" << std::endl;
-            Connection& curr_connection = m_connections_[curr_event->ident];
-            Connection::Status connection_status = curr_connection.get_m_status();
-
-            try {
-              if (connection_status == Connection::TO_SEND ||
-                  connection_status == Connection::ON_SEND)
-                curr_connection.runSend();
-            } catch(ServerManager::IOError& e) {
-              ft::log(ServerManager::log_fd, ft::getTimestamp() + "[at FD_CLIENT write]" + e.location() + std::string("\n"));
-              closeConnection(curr_event->ident);
-            } catch (...) {
-              ft::log(ServerManager::log_fd, ft::getTimestamp() + "detected some error" + std::string("\n"));
-              closeConnection(curr_event->ident);
-            }
-            break;
-          }
-          case FD_CGI: {
-            std::cout << "case 2 - 2" << std::endl;
-            Connection* curr_connection = m_cgi_connection_map_[curr_event->ident];
-            Connection::Status connection_status = curr_connection->get_m_status();
-
-            try {
-              if (connection_status == Connection::ON_EXECUTE &&
-                  curr_connection->get_m_read_from_server_fd() != 1)
-                curr_connection->runExecute(CGI_READ);
-            } catch(ServerManager::IOError& e) {
-              ft::log(ServerManager::log_fd, ft::getTimestamp() + "[at FD_CGI write]" + e.location() + std::string("\n"));
-              closeConnection(curr_event->ident);
-            } catch (...) {
-              ft::log(ServerManager::log_fd, ft::getTimestamp() + "detected some error" + std::string("\n"));
-              closeConnection(curr_event->ident);
-            }
-            break;
-          }
-          default:
-            throw std::exception();
-        }
-      }
-    }
-    usleep(50);
   }
   exitWebserv("Webserv exited\n");
 }
@@ -344,28 +223,26 @@ int ServerManager::getUnusedConnectionFd(void) {
 }
 
 void ServerManager::closeConnection(int client_fd) {
-  std::cout << client_fd << " connection closed..." << std::endl;
   writeCloseConnectionLog_(client_fd);
   if (close(client_fd) == -1)
     ft::log(ServerManager::log_fd,
             "[Failed]close function failed in closeConnection");
-  // this->changeEvents_(m_change_list_, client_fd, EVFILT_READ, EV_DELETE, 0, 0, NULL);
+  fdClear(client_fd, READ_SET);
 
   int cgi_read_fd = m_connections_[client_fd].get_m_read_from_server_fd();
   int cgi_write_fd = m_connections_[client_fd].get_m_write_to_server_fd();
 
   if (cgi_read_fd > 0) {
-    // this->changeEvents_(m_change_list_, cgi_read_fd, EVFILT_READ, EV_DELETE, 0, 0, NULL);
+    fdClear(cgi_read_fd, READ_SET);
+    fdClear(cgi_read_fd, READ_COPY_SET);
     close(cgi_read_fd);
-    m_fd_set_.erase(cgi_read_fd);
   }
   if (cgi_write_fd > 0) {
-    // this->changeEvents_(m_change_list_, cgi_write_fd, EVFILT_WRITE, EV_DELETE, 0, 0, NULL);
+    fdClear(cgi_write_fd, WRITE_SET);
+    fdClear(cgi_write_fd, WRITE_COPY_SET);
     close(cgi_write_fd);
-    m_fd_set_.erase(cgi_write_fd);
   }
   m_connections_.erase(client_fd);
-  m_fd_set_.erase(client_fd);
 }
 
 void ServerManager::fdSet(int fd, SetType fdset) {
@@ -486,7 +363,7 @@ void ServerManager::fdCopy(SetType fdset) {
   }
   if (fdset == READ_SET || fdset == ALL_SET) {
     FD_ZERO(&m_read_copy_set_);
-    m_read_copy_set_ = m_write_set_;
+    m_read_copy_set_ = m_read_set_;
   }
   if (fdset == ERROR_SET || fdset == ALL_SET) {
     FD_ZERO(&m_error_copy_set_);
@@ -535,7 +412,6 @@ void ServerManager::addServer_(const ServerConfig& new_server) {
   // changeEvents_(m_change_list_, server_socket_fd, EVFILT_READ,
   //                 EV_ADD | EV_ENABLE, 0, 0, NULL);
   // insertFd(server_socket_fd, FD_SERVER);
-  std::cout << "server fd: " << server_socket_fd << " created! " << std::endl;
   m_server_configs_[server_socket_fd] = new_server;
   m_fdset_.insert(server_socket_fd);
 }
@@ -550,7 +426,6 @@ bool ServerManager::acceptNewConnection_(int server_socket_fd) {
 
   // tv.tv_sec = 60;
   // tv.tv_usec = 0;
-
   bzero(&client_addr, client_addr_size);
   if ((client_fd = accept(server_socket_fd,
         (struct sockaddr*)&client_addr, &client_addr_size)) == -1) {
@@ -574,6 +449,19 @@ bool ServerManager::acceptNewConnection_(int server_socket_fd) {
                 client_fd, client_ip, client_port);
   fdSet(client_fd, READ_SET);
   return true;
+}
+
+void ServerManager::closeOldConnection_(void) {
+  std::map<int, Connection>::iterator it = m_connections_.begin();
+  while (it != m_connections_.end()) {
+    int fd = it->first;
+    if (!ft::hasKey(m_fdset_, fd) && it->second.isTimeOver()) {
+      ++it;
+      closeConnection(fd);
+    } else {
+      ++it;
+    }
+  }
 }
 
 void ServerManager::writeCreateServerLog_(void) {

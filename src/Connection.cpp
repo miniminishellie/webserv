@@ -6,7 +6,7 @@
 /*   By: jihoolee <jihoolee@student.42SEOUL.kr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/25 21:44:42 by jihoolee          #+#    #+#             */
-/*   Updated: 2022/06/11 16:57:49 by jihoolee         ###   ########.fr       */
+/*   Updated: 2022/06/13 16:43:09 by jihoolee         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -275,7 +275,7 @@ std::string Connection::GetCGIEnvValue(const Request& request, std::string token
   else if (token == "GATEWAY_INTERFACE")
     return m_webserv_config_->get_m_cgi_version();
   else
-    throw 40000;
+    return NULL;
 }
 
 bool Connection::ParseStartLine() {
@@ -286,8 +286,8 @@ bool Connection::ParseStartLine() {
     m_read_buffer_client_ = m_read_buffer_client_.erase(0, new_line + 2);
     m_request_ = Request(this, m_server_config_, start_line);
     return true;
-  }
-  else if (m_read_buffer_client_.size() > m_server_config_->get_m_request_uri_size_limit())
+  } else if (m_read_buffer_client_.size()
+              > m_server_config_->get_m_request_uri_size_limit())
     throw 40006;
   return false;
 }
@@ -300,16 +300,13 @@ int Connection::RecvWithoutBody(char *buf, int buf_size) {
     while(i < recv_len) {
       if (buf[i] == '\r' && i + 3 < recv_len && buf[i + 1] == '\n' && buf[i + 2] == '\r' && buf[i + 3] == '\n')
         break;
-      i++;
+      ++i;
     }
-    std::cout << "recv_len:" << recv_len << std::endl;
     if (i == recv_len)
       return 0;
     else if ((recv_len = recv(m_client_fd_, buf, i + 4, 0)) > 0)
       return i + 4;
   }
-  std::cout << "recv_len: " << recv_len << std::endl;
-  std::cout << errno << std::endl;
   if (recv_len  == -1)
     throw ServerManager::IOError(
       ("IO error detected to read reqeust message without body for client "
@@ -351,7 +348,7 @@ bool Connection::ParseHeader() {
   while(ft::getLine(read_buf, line, m_server_config_->get_m_request_header_size_limit()) >= 0) {
     if (line == "") {
       if (!ft::hasKey(m_request_.get_m_headers(), "Host"))
-        throw 40010;
+        throw 40011;
       return true;
     }
     if (!IsValidHeader(line))
@@ -378,8 +375,9 @@ int Connection::RecvBody(char *buf, int buf_size) {
   // int i = 0;
   int read_size = 0;
 
-  // if (m_request_.get_m_method() == Request::POST && m_request_.get_m_transfer_type() == Request::CHUNKED)
-  //   return 0;
+  if (m_request_.get_m_method() == Request::POST &&
+      m_request_.get_m_transfer_type() == Request::CHUNKED)
+    return 0;
   if (m_request_.get_m_method() != Request::POST &&
       m_request_.get_m_method() != Request::PUT)
     return 0;
@@ -479,6 +477,9 @@ bool Connection::ParseBody() {
   if (m_request_.get_m_method() != Request::POST &&
       m_request_.get_m_method() != Request::PUT)
     return true;
+  if (m_request_.get_m_method() == Request::POST &&
+      m_request_.get_m_transfer_type() == Request::CHUNKED)
+    return true;
   if (m_request_.get_m_transfer_type() == Request:: GENERAL)
     return ReadGeneralBody();
   if (m_request_.get_m_transfer_type() == Request:: CHUNKED)
@@ -505,30 +506,21 @@ void Connection::RecvRequest(void) {
   Request::Phase phase = m_request_.get_m_phase();
 
   m_status_ = ON_RECV;
-  std::cout << "RecvRequest 1" << std::endl;
-  // std::cout << "buf: " << buf << "\n\n";
   if (phase == Request::READY && (read_size = RecvWithoutBody(buf, sizeof(buf))) > 0)
     addReadbufferClient(buf, read_size);
-  std::cout << "RecvRequest 2" << std::endl;
-  // std::cout << "buf: " << buf << "\n\n";
   if (phase == Request::READY && ParseStartLine())
     phase = Request::ON_HEADER;
-  std::cout << "RecvRequest 3" << std::endl;
   if (phase == Request::ON_HEADER && ParseHeader()) {
     m_request_.set_m_phase(phase = Request::ON_BODY);
     if (IsRequestHasBody())
       return ;
   }
-  std::cout << "RecvRequest 4" << std::endl;
   if (phase == Request::ON_BODY && (read_size = RecvBody(buf, sizeof(buf))) > 0)
     addReadbufferClient(buf, read_size);
-  std::cout << "RecvRequest 5" << std::endl;
   if (phase == Request::ON_BODY && ParseBody())
     phase = Request::COMPLETE;
-  std::cout << "RecvRequest 6" << std::endl;
   if (phase == Request::COMPLETE)
     set_m_last_request_at();
-  std::cout << "RecvRequest 7" << std::endl;
   m_request_.set_m_phase(phase);
 }
 
@@ -630,9 +622,7 @@ void Connection::CreateResponse(int status, headers_t headers, std::string body)
   // writeCreateNewResponseLog(response);
   m_request_.set_m_phase(Request::COMPLETE);
   m_status_ = TO_SEND;
-  m_server_manager_->addEvent(m_client_fd_, EVFILT_WRITE, EV_ADD | EV_ENABLE,
-                              0, 0, NULL);
-  //m_manager->fdSet(response.get_m_connection()->get_m_client_fd(), ServerManager::WRITE_SET);
+  m_server_manager_->fdSet(m_client_fd_, ServerManager::WRITE_SET);
 }
 
 bool makeAutoindexContent(HtmlWriter& html, std::string cwd, std::string directory_uri) {
@@ -803,7 +793,7 @@ void Connection::ExecuteCGI(const Request& request)
   Request::Method method = request.get_m_method();
 
   if ((env = CreateCGIEnv(request)) == NULL)
-    return CreateResponse(50003);
+    return CreateResponse(50005);
   pipe(parent_write_fd);
   pipe(child_write_fd);
   pid = fork();
@@ -825,20 +815,12 @@ void Connection::ExecuteCGI(const Request& request)
     m_write_to_server_fd_ = parent_write_fd[1];
     if (request.get_m_transfer_type() == Request::GENERAL)
       m_wbuf_ = m_request_.get_m_content();
-    m_server_manager_->addEvent(m_write_to_server_fd_, EVFILT_WRITE,
-                                EV_ADD | EV_ENABLE, 0, 0, NULL);
-    m_server_manager_->addCGIConnectionMap(m_write_to_server_fd_, this);
-    m_server_manager_->insertFd(m_write_to_server_fd_, ServerManager::FD_CGI);
-    //m_manager->fdSet(connection.get_m_write_to_server_fd(), ServerManager::WRITE_SET);
+    m_server_manager_->fdSet(m_write_to_server_fd_, ServerManager::WRITE_SET);
   }
   else
     close(parent_write_fd[1]);
   m_read_from_server_fd_ = child_write_fd[0];
-  m_server_manager_->addEvent(m_read_from_server_fd_, EVFILT_READ,
-                              EV_ADD | EV_ENABLE, 0, 0, NULL);
-  m_server_manager_->addCGIConnectionMap(m_read_from_server_fd_, this);
-  m_server_manager_->insertFd(m_write_to_server_fd_, ServerManager::FD_CGI);
-  //m_manager->fdSet(connection.get_m_read_from_server_fd(), ServerManager::READ_SET);
+  m_server_manager_->fdSet(m_read_from_server_fd_, ServerManager::READ_SET);
   ft::freeDoublestr(&env);
 }
 
@@ -1000,7 +982,7 @@ void Connection::SolveRequest() {
   else if (method == Request::DELETE)
     ExecuteDelete(m_request_);
   else
-    CreateResponse(400000);
+    throw 400;
 }
 
 void Connection::ExecuteDelete(const Request& request) {
@@ -1108,9 +1090,8 @@ bool Connection::runSend() {
   }
   sendFromWbuf();
   if (m_wbuf_data_size_ == m_send_data_size_) {
-    std::cout << "send" << std::endl;
     m_status_ = ON_WAIT;
-    m_server_manager_->addEvent(m_client_fd_, EVFILT_WRITE, EV_DELETE, 0, 0, NULL);
+    m_server_manager_->fdClear(m_client_fd_, ServerManager::WRITE_SET);
     writeSendResponseLog(m_response_);
     // if (m_response_.get_m_status_code() / 100 != 2)
     //   throw ServerManager::IOError("send error response.");
@@ -1128,14 +1109,12 @@ void Connection::sendFromWbuf() {
 
   if (size_to_send > BUFFER_SIZE)
     size_to_send = BUFFER_SIZE;
-  std::cout << "send to client_fd: " << m_client_fd_ << std::endl;
 
   std::ofstream output("output", std::ios::binary);
 
   output.write(m_wbuf_.data(), size_to_send);
   output.close();
   count = send(m_client_fd_, m_wbuf_.c_str() + m_send_data_size_, size_to_send, 0);
-    std::cout << "send count" << count << std::endl;
   if (count == 0 || count == -1) {
     throw ServerManager::IOError(
       ("IOError detected to send respoonse message to cient"
@@ -1157,22 +1136,54 @@ void Connection::addReadbufferServer(const char* str, int size) {
   m_read_buffer_server_.append(str, size);
 }
 
-// void Connection::writeChunkedBodyToCGIScript() {
-//   std::string& rbuf = m_read_buffer_client_;
-//   int client_fd = m_client_fd_;
-//   int to_child_fd = m_write_to_server_fd_;
-//   char buf[BUFFER_SIZE];
-//   int count;
+void Connection::writeChunkedBodyToCGIScript() {
+  std::string& rbuf = m_read_buffer_client_;
+  int client_fd = m_client_fd_;
+  int to_child_fd = m_write_to_server_fd_;
+  char buf[BUFFER_SIZE];
+  int count;
 
-//   if (rbuf.size() < 70000 && /*FD_ISSET(client_fd_, ServerManager::READ_COPY_SET*/) {
-//     if ((count = recv(m_client_fd_, buf, sizeof(buf), 0)) > 0)
-//       addReadbufferClient(buf, count);
-//     else if (count == -1)
-//       throw ServerManager::IOError(("IOERROR"));
-//     else
-//       throw ServerManager::IOError(("Connection close detected by client"));
-//   }
-// }
+  if (rbuf.size() < 70000 &&
+      m_server_manager_->fdIsset(client_fd, ServerManager::READ_COPY_SET)) {
+    if ((count = recv(m_client_fd_, buf, sizeof(buf), 0)) > 0)
+      addReadbufferClient(buf, count);
+    else if (count == -1)
+      throw ServerManager::IOError(("IOERROR detected to read request message wotjpit body for client "
+                                    + ft::to_string(client_fd)).c_str());
+    else
+      throw ServerManager::IOError(("Connection close detected by client"
+                                    + ft::to_string(client_fd)).c_str());
+  }
+
+  std::string len;
+  int content_length = getChunkedSize(rbuf, len);
+
+  if (content_length == -1) {
+    return;
+  } else if (content_length == 0) {
+    if (rbuf.find("\r\n") == std::string::npos) {
+      rbuf.insert(0, len + "\r\n");
+    } else if (rbuf.size() >= 2 && rbuf[0] == '\r' && rbuf[1] == '\n') {
+      m_read_buffer_client_ = m_read_buffer_client_.erase(0, 2);
+      close(to_child_fd);
+      m_server_manager_->fdClear(to_child_fd, ServerManager::WRITE_SET);
+      m_server_manager_->fdClear(to_child_fd, ServerManager::WRITE_COPY_SET);
+    }
+    return;
+  } else if (static_cast<int>(rbuf.size()) < content_length + 2) {
+    rbuf.insert(0, len + "\r\n");
+    return;
+  } else {
+    count = write(to_child_fd, rbuf.c_str(), content_length);
+    if (count > 0)
+      m_read_buffer_client_ = m_read_buffer_client_.erase(0, content_length + 2);
+    else if (count == 0 || count == -1)
+      throw ServerManager::IOError(("IO error detected to write body to child proccess "
+                                    + ft::to_string(to_child_fd)).c_str());
+    else
+      rbuf.insert(0, len + "\r\n");
+  }
+}
 
 void Connection::writeSavedBodyToCGIScript() {
   int to_child_fd = m_write_to_server_fd_;
@@ -1189,18 +1200,18 @@ void Connection::writeSavedBodyToCGIScript() {
   } else {
     close(to_child_fd);
     m_write_to_server_fd_ = -1;
-    m_server_manager_->addEvent(to_child_fd, EVFILT_WRITE,
-                                EV_DELETE, 0, 0, NULL);
+    m_server_manager_->fdClear(to_child_fd, ServerManager::WRITE_SET);
   }
 }
 
-bool Connection::runExecute(int mode) {
+bool Connection::runExecute() {
   int from_child_fd = m_read_from_server_fd_;
   int to_child_fd = m_write_to_server_fd_;
   int stat;
   bool read_end = false;
 
-  if (from_child_fd != -1 && mode == ServerManager::CGI_READ) {
+  if (from_child_fd != -1 &&
+    m_server_manager_->fdIsset(from_child_fd, ServerManager::READ_COPY_SET)) {
     char buf[BUFFER_SIZE];
     int count = read(from_child_fd, buf, sizeof(buf));
 
@@ -1212,11 +1223,12 @@ bool Connection::runExecute(int mode) {
       throw ServerManager::IOError("IO error detected to read from child proccess");
   }
 
-  if (to_child_fd != 1 && mode == ServerManager::CGI_WRITE) {
-    // if (m_request_.get_m_method() == Request::POST &&
-    //     m_request_.get_m_transfer_type == Request::CHUNKED)
-    //   writeChunkedBodyToCGIScript();
-    // else
+  if (to_child_fd != 1 &&
+      m_server_manager_->fdIsset(to_child_fd, ServerManager::WRITE_COPY_SET)) {
+    if (m_request_.get_m_method() == Request::POST &&
+        m_request_.get_m_transfer_type() == Request::CHUNKED)
+      writeChunkedBodyToCGIScript();
+    else
       writeSavedBodyToCGIScript();
   }
 
@@ -1224,8 +1236,7 @@ bool Connection::runExecute(int mode) {
   if (WIFEXITED(stat) && read_end == true && m_write_to_server_fd_ == -1) {
     if (from_child_fd != -1) {
       close(from_child_fd);
-      m_server_manager_->addEvent(from_child_fd, EVFILT_WRITE,
-                                  EV_DELETE, 0, 0, NULL);
+      m_server_manager_->fdClear(from_child_fd, ServerManager::READ_SET);
     }
     std::string body = m_read_buffer_server_;
     m_read_buffer_server_.clear();
@@ -1246,4 +1257,43 @@ bool Connection::runExecute(int mode) {
     return true;
   }
   return false;
+}
+
+bool Connection::hasSendWork(void) {
+  if (m_status_ != TO_SEND && m_status_ != ON_SEND)
+    return false;
+  return m_server_manager_->fdIsset(m_client_fd_,
+                                    ServerManager::WRITE_COPY_SET);
+}
+
+bool Connection::hasExecuteWork(void) {
+  int from_child_fd = m_read_from_server_fd_;
+  int to_child_fd = m_write_to_server_fd_;
+
+  if (m_status_ == ON_EXECUTE) {
+    if (from_child_fd != -1 &&
+        m_server_manager_->fdIsset(from_child_fd, ServerManager::READ_COPY_SET))
+      return true;
+    if (to_child_fd != 1 &&
+        m_server_manager_->fdIsset(to_child_fd, ServerManager::WRITE_COPY_SET))
+      return true;
+  }
+  return false;
+}
+
+bool Connection::hasRequest(void) {
+  if (m_status_ != ON_WAIT && m_status_ != ON_RECV)
+    return false;
+  return m_server_manager_->fdIsset(m_client_fd_,
+                                    ServerManager::READ_COPY_SET);
+}
+
+bool Connection::isTimeOver(void) const {
+  timeval curr_time;
+
+  if (gettimeofday(&curr_time, NULL) == -1)
+    throw std::runtime_error("gettimeofday error");
+  long curr_time_in_sec = curr_time.tv_sec + curr_time.tv_usec / 1000000;
+  long last_req_in_sec = m_last_request_at_.tv_sec + m_last_request_at_.tv_usec / 1000000;
+  return ((curr_time_in_sec - last_req_in_sec) >= 500);
 }
