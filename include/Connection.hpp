@@ -27,7 +27,7 @@
 
 # define BUFFER_SIZE 65536
 # define CGI_SUCCESS_CODE 299
-# define CGI_META_VARIABLE_COUNT 15
+# define CGI_META_VARIABLE_COUNT 16
 
 typedef std::vector<std::string> headers_t;
 

@@ -262,7 +262,7 @@ std::string Connection::GetCGIEnvValue(const Request& request, std::string token
     return request.get_m_method_to_string();
   else if (token == "REQUEST_URI")
     return request.get_m_uri();
-  else if (token == "SCRIPT_NAME")
+  else if (token == "SCRIPT_FILENAME")
     return request.get_m_script_translated();
   else if (token == "SERVER_NAME")
     return m_server_config_->get_m_server_name();
@@ -692,6 +692,7 @@ char** Connection::CreateCGIEnv(const Request& request) {
   char **env = DupBaseEnvWithExtraSpace(request);
   int idx = ft::lenDoubleStr(m_webserv_config_->get_m_base_env());
   SetEnv(env, idx++, "AUTH_TYPE", "");
+  SetEnv(env, idx++, "REDIRECT_STATUS", "CGI");
   SetEnv(env, idx++, "CONTENT_LENGTH", GetCGIEnvValue(request, "CONTENT_LENGTH"));
   SetEnv(env, idx++, "CONTENT_TYPE", GetCGIEnvValue(request, "CONTENT_TYPE"));
   SetEnv(env, idx++, "GATEWAY_INTERFACE", GetCGIEnvValue(request, "GATEWAY_INTERFACE"));
@@ -701,7 +702,7 @@ char** Connection::CreateCGIEnv(const Request& request) {
   SetEnv(env, idx++, "REMOTE_ADDR", GetCGIEnvValue(request, "REMOTE_ADDR"));
   SetEnv(env, idx++, "REQUEST_METHOD", GetCGIEnvValue(request, "REQUEST_METHOD"));
   SetEnv(env, idx++, "REQUEST_URI", GetCGIEnvValue(request, "REQUEST_URI"));
-  SetEnv(env, idx++, "SCRIPT_NAME", GetCGIEnvValue(request, "SCRIPT_NAME"));
+  SetEnv(env, idx++, "SCRIPT_FILENAME", GetCGIEnvValue(request, "SCRIPT_FILENAME"));
   SetEnv(env, idx++, "SERVER_NAME", GetCGIEnvValue(request, "SERVER_NAME"));
   SetEnv(env, idx++, "SERVER_PORT", GetCGIEnvValue(request, "SERVER_PORT"));
   SetEnv(env, idx++, "SERVER_PROTOCOL", GetCGIEnvValue(request, "SERVER_PROTOCOL"));
@@ -769,20 +770,33 @@ void Connection::Closes(int fd1, int fd2, int fd3, int fd4, int fd5) {
   if (fd5 != -1)
     close(fd5);
 }
-void Connection::ExecveCGI(const Request& request, char **env, int *parent_write_fd, int *child_write_fd) {
+
+void Connection::ExecveCGI(const Request& request, char **env, int *parent_write_fd, int *child_write_fd)
+{
   Closes(parent_write_fd[1], child_write_fd[0]);
   dup2(parent_write_fd[0], 0);
   dup2(child_write_fd[1], 1);
-  /* child process */
-  char *arg[2] = { const_cast<char *>(request.get_m_script_translated().c_str()), NULL };
-  std::string script_name = GetCGIEnvValue(request, "SCRIPT_NAME");
+
+  char *arg[3];
+  std::string script_name = GetCGIEnvValue(request, "SCRIPT_FILENAME");
   std::string ext = script_name.substr(script_name.rfind(".") + 1);
+
+  if (ext == "php") {
+    arg[0] = const_cast<char*>("./php-cgi");
+    arg[1] = const_cast<char*>(request.get_m_script_translated().c_str());
+    arg[2] = NULL;
+  } else {
+    arg[0] = const_cast<char *>(request.get_m_script_translated().c_str());
+    arg[1] = NULL;
+    arg[2] = NULL;
+  }
   if (ext == "php" && execve("./php-cgi", arg, env) == -1)
     exit(EXIT_FAILURE);
   else if (execve(arg[0], arg, env) == -1)
     exit(EXIT_FAILURE);
   exit(EXIT_FAILURE);
 }
+
 
 void Connection::ExecuteCGI(const Request& request)
 {
@@ -1240,7 +1254,7 @@ bool Connection::runExecute() {
       if (body.size() > body_size + body.find("\r\n\r\n") + 4) {
         CreateResponse(41301);
       } else {
-        std::cout << body << std::endl;
+        // std::cout << body << std::endl;
         CreateResponse(CGI_SUCCESS_CODE, headers_t(), body);
       }
     } else {
