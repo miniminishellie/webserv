@@ -6,7 +6,7 @@
 /*   By: jihoolee <jihoolee@student.42SEOUL.kr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/25 21:44:42 by jihoolee          #+#    #+#             */
-/*   Updated: 2022/06/13 16:43:09 by jihoolee         ###   ########.fr       */
+/*   Updated: 2022/06/15 15:01:44 by jihoolee         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -1026,7 +1026,7 @@ void Connection::ExecutePut(const Request& request) {
                   O_RDWR | O_CREAT | O_TRUNC, 0777)) == -1)
     return CreateResponse(50003);
   if (!request.get_m_content().empty() &&
-        (count = write(fd, request.get_m_script_translated().c_str(),
+        (count = write(fd, request.get_m_content().c_str(),
                         request.get_m_content().size()) <= 0)) {
     close(fd);
     if (count == 0 || count == -1)
@@ -1101,19 +1101,12 @@ bool Connection::runSend() {
   return m_wbuf_data_size_ == m_send_data_size_;
 }
 
-# include <fstream>
-
 void Connection::sendFromWbuf() {
   int size_to_send = m_wbuf_data_size_ - m_send_data_size_;
   int count = -1;
 
   if (size_to_send > BUFFER_SIZE)
     size_to_send = BUFFER_SIZE;
-
-  std::ofstream output("output", std::ios::binary);
-
-  output.write(m_wbuf_.data(), size_to_send);
-  output.close();
   count = send(m_client_fd_, m_wbuf_.c_str() + m_send_data_size_, size_to_send, 0);
   if (count == 0 || count == -1) {
     throw ServerManager::IOError(

@@ -6,7 +6,7 @@
 /*   By: jihoolee <jihoolee@student.42SEOUL.kr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/21 15:39:29 by jihoolee          #+#    #+#             */
-/*   Updated: 2022/06/09 21:18:15 by jihoolee         ###   ########.fr       */
+/*   Updated: 2022/06/15 14:54:24 by jihoolee         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -26,7 +26,7 @@ class Request {
  public:
   enum Phase { READY, ON_HEADER, ON_BODY, COMPLETE };
   enum Method { DEFAULT, HEAD, GET, POST, PUT, DELETE };
-  enum URIType { DIRECTORY, FILE, CGI };
+  enum URIType { DIRECTORY, FILE, FILE_TO_CREATE, CGI };
   enum TransferType { GENERAL, CHUNKED };
 
   Request(void);

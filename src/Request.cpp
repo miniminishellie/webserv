@@ -6,7 +6,7 @@
 /*   By: jihoolee <jihoolee@student.42SEOUL.kr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/26 14:54:39 by jihoolee          #+#    #+#             */
-/*   Updated: 2022/06/13 18:25:43 by jihoolee         ###   ########.fr       */
+/*   Updated: 2022/06/15 14:57:34 by jihoolee         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -45,9 +45,6 @@ Request::Request(Connection* connection, ServerConfig* serverconfig, std::string
       m_transfer_type_(GENERAL) {
   if (gettimeofday(&m_start_at_, NULL) == -1)
     throw std::runtime_error("gettimeofday function failed in request generator");
-
-    std::cout << "start_line: " << start_line << std::endl;
-
   std::vector<std::string> parsed = ft::splitStringByChar(start_line, ' ');
   if (parsed.size() != 3)
     throw 40000;
@@ -62,15 +59,14 @@ Request::Request(Connection* connection, ServerConfig* serverconfig, std::string
   std::string translated_path = ParseUri();
   if (translated_path.empty())
     throw 40002;
-  std::cout << "translated_path: " << translated_path << std::endl;
   if (ft::isFile(translated_path) && m_uri_type_ != Request::CGI)
     m_uri_type_ = Request::FILE;
   else if (ft::isDirectory(translated_path))
     m_uri_type_ = DIRECTORY;
-  else if (m_uri_type_ != Request::CGI) {
-    std::cout << "m_uri_type: " << m_uri_type_ << std::endl;
+  else if (m_method_ == PUT)
+    m_uri_type_ = FILE_TO_CREATE;
+  else if (m_uri_type_ != Request::CGI)
     throw 40402;
-  }
   m_protocol_ = parsed[2];
   if (m_protocol_ != "HTTP/1.1")
     throw 50501;
@@ -145,7 +141,9 @@ const std::string		&Request::get_m_path_info() const { return (m_path_info_); }
 std::string 			Request::get_m_method_to_string() const
 {
 	if (m_method_ == GET) return (std::string("GET"));
+  else if (m_method_ == HEAD) return std::string("HEAD");
 	else if (m_method_ == POST) return (std::string("POST"));
+  else if (m_method_ == PUT) return std::string("PUT");
 	else if (m_method_ == DELETE) return (std::string("DELETE"));
 	return (std::string(""));
 }
@@ -272,14 +270,10 @@ std::string Request::ParseUri() {
   if (ft::isDirectory(GetTranslatedPath(m_locationconfig_->get_m_root_path(), uri)) &&
       !m_locationconfig_->get_m_autoindex())
     uri = m_uri_ = GetIndexPath(m_locationconfig_->get_m_index(), GetTranslatedPath(m_locationconfig_->get_m_root_path(), uri));
-  for (std::set<std::string>::iterator it = m_locationconfig_->get_m_cgi().begin();
-        it != m_locationconfig_->get_m_cgi().end(); ++it)
-    std::cout << "cgi name: " << *it << std::endl;
   for (std::set<std::string>::const_iterator it = m_locationconfig_->get_m_cgi().begin(); it != m_locationconfig_->get_m_cgi().end(); ++it) {
     if (uri.find(*it) != std::string::npos) {
       int idx = uri.find(*it);
       m_uri_type_ = CGI;
-      std::cout << "hi" << std::endl;
       if (uri.find("?") != std::string::npos) {
         m_query_ = uri.substr(uri.find("?") + 1);
         uri = uri.substr(0, uri.find("?"));
