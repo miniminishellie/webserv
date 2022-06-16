@@ -6,7 +6,7 @@
 #    By: jihoolee <jihoolee@student.42SEOUL.kr>     +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2022/05/17 22:44:00 by jihoolee          #+#    #+#              #
-#    Updated: 2022/06/08 20:31:28 by jihoolee         ###   ########.fr        #
+#    Updated: 2022/06/15 19:37:51 by bylee            ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -36,7 +36,7 @@ all : $(NAME)
 
 claen :
 	$(RM) $(OBJS)
-	@$(RM) $(OBJ_DIR)
+	$(RM) $(OBJ_DIR)
 
 fclean : claen
 	$(RM) $(NAME)

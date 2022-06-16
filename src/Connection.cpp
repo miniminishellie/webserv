@@ -1181,7 +1181,6 @@ void Connection::writeChunkedBodyToCGIScript() {
     rbuf.insert(0, len + "\r\n");
     return;
   } else {
-    count = write(to_child_fd, rbuf.c_str(), content_length);
     if (count > 0)
       m_read_buffer_client_ = m_read_buffer_client_.erase(0, content_length + 2);
     else if (count == 0 || count == -1)

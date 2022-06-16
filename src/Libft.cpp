@@ -150,7 +150,7 @@ std::string getStringFromFile(const std::string& file_path, int max_size) {
 
   if ((fd = open(file_path.c_str(), O_RDONLY)) == -1)
     throw(std::invalid_argument("Failed to open " + file_path));
-  while ((read_byte = read(fd, buf, 1024)) > 0) {
+  while ((read_byte = read(fd, buf, 1024)) > 0) {  //  TO_CHECK
     result.append(buf, read_byte);
     if (max_size != -1 && static_cast<int>(result.size()) > max_size)
       throw std::overflow_error("overflow max_size in getStringFromFile");
@@ -164,7 +164,7 @@ std::string getStringFromFd(int fd, int max_size) {
   char buff[1024];
   std::string ret;
 
-  while ((read_cnt = read(fd, buff, 1024)) > 0) {
+  while ((read_cnt = read(fd, buff, 1024)) > 0) { // TO_CHECK
     ret.append(buff, read_cnt);
     if (max_size != -1 && static_cast<int>(ret.size()) > max_size)
       throw (std::overflow_error("overflow max_size in getStringFromFile"));
@@ -223,7 +223,7 @@ stringVectorToSet(std::vector<std::string> stringVector) {
 
 void log(int log_fd, std::string text) {
   if (log_fd != -1)
-    write(log_fd, text.c_str(), text.size());
+    write(log_fd, text.c_str(), text.size()); //TO_CHECK
 }
 
 long long int abs(long long int num) {
