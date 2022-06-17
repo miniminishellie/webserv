@@ -6,7 +6,7 @@
 /*   By: jihoolee <jihoolee@student.42SEOUL.kr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/25 21:44:42 by jihoolee          #+#    #+#             */
-/*   Updated: 2022/06/17 15:24:26 by jihoolee         ###   ########.fr       */
+/*   Updated: 2022/06/17 20:48:13 by jihoolee         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -606,8 +606,8 @@ void Connection::CreateResponse(int status, headers_t headers, std::string body)
     headers.push_back("Content-Language:ko-KR");
   if (status / 100 != 2)
     headers.push_back("Connection:close");
-  if (status / 100 == 3)
-    headers.push_back("Location:/");
+  // if (status / 100 == 3)
+  //   headers.push_back("Location:/");
   if (status == 504)
     headers.push_back("Retry-After:3600");
 
@@ -967,6 +967,10 @@ void Connection::SolveRequest() {
   if (!ft::hasKey(locationconfig->get_m_allow_method(), methodString)) {
     headers_t headers(1, "Allow:" + ft::containerToString(locationconfig->get_m_allow_method(), ", "));
     return CreateResponse(40501, headers);
+  }
+  if (!locationconfig->get_m_redirect_uri().empty()) {
+    headers_t headers(1, "Location:" + locationconfig->get_m_redirect_uri());
+    return CreateResponse(301, headers);
   }
   if (isAuthorizationRequired(locationconfig)) {
     if (!hasCredential(m_request_)) {

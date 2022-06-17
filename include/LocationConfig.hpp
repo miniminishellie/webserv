@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   LocationConfig.hpp                                 :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: bylee <bylee@student.42.fr>                +#+  +:+       +#+        */
+/*   By: jihoolee <jihoolee@student.42SEOUL.kr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/21 15:38:35 by jihoolee          #+#    #+#             */
-/*   Updated: 2022/06/17 20:07:13 by bylee            ###   ########.fr       */
+/*   Updated: 2022/06/17 20:29:13 by jihoolee         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -40,7 +40,7 @@ class LocationConfig {
   const bool&                               get_m_autoindex() const;
   size_t                                    get_m_limit_client_body_size()
                                               const;
-  std::string                               get_m_redirect_path() const;
+  std::string                               get_m_redirect_uri() const;
 
  private:
   std::string                         m_uri_;
@@ -52,7 +52,7 @@ class LocationConfig {
   std::set<std::string>               m_cgi_;
   size_t                              m_limit_client_body_size_;
   bool                                m_autoindex_;
-  std::string                         m_redirect_path_;
+  std::string                         m_redirect_uri_;
 };  //  class LocationConfig
 
 std::ostream&	operator<<(std::ostream& out, const LocationConfig& location);

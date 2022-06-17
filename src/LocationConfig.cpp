@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   LocationConfig.cpp                                 :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: bylee <bylee@student.42.fr>                +#+  +:+       +#+        */
+/*   By: jihoolee <jihoolee@student.42SEOUL.kr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/25 12:43:59 by jihoolee          #+#    #+#             */
-/*   Updated: 2022/06/17 20:13:56 by bylee            ###   ########.fr       */
+/*   Updated: 2022/06/17 20:29:48 by jihoolee         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -66,7 +66,7 @@ LocationConfig::LocationConfig(const std::string& location_uri,
   else
     this->m_limit_client_body_size_ = server_limit_client_body_size;
   if (ft::hasKey(map_block, "redirect"))
-    this->m_redirect_path_ = map_block.find("redirect")->second;
+    this->m_redirect_uri_ = map_block.find("redirect")->second;
 }
 
 LocationConfig::LocationConfig(const LocationConfig& ref)
@@ -79,7 +79,7 @@ LocationConfig::LocationConfig(const LocationConfig& ref)
       m_cgi_(ref.m_cgi_),
       m_limit_client_body_size_(ref.m_limit_client_body_size_),
       m_autoindex_(ref.m_autoindex_),
-      m_redirect_path_(ref.m_redirect_path_) {}
+      m_redirect_uri_(ref.m_redirect_uri_) {}
 
 LocationConfig::~LocationConfig() {}
 
@@ -95,7 +95,7 @@ LocationConfig& LocationConfig::operator=(const LocationConfig& ref) {
   m_cgi_ = ref.m_cgi_;
   m_limit_client_body_size_ = ref.m_limit_client_body_size_;
   m_autoindex_ = ref.m_autoindex_;
-  m_redirect_path_ = ref.m_redirect_path_;
+  m_redirect_uri_ = ref.m_redirect_uri_;
   return *this;
 }
 
@@ -126,8 +126,8 @@ const bool&                               LocationConfig::get_m_autoindex() cons
 size_t                                    LocationConfig::get_m_limit_client_body_size() const {
   return m_limit_client_body_size_;
 }
-std::string                               LocationConfig::get_m_redirect_path() const {
-  return m_redirect_path_;
+std::string                               LocationConfig::get_m_redirect_uri() const {
+  return m_redirect_uri_;
 }
 
 std::ostream&	operator<<(std::ostream& out, const LocationConfig& location) {
@@ -138,6 +138,6 @@ std::ostream&	operator<<(std::ostream& out, const LocationConfig& location) {
   out << "INDEX: " << ft::containerToString(location.get_m_index(), "\n") << std::endl;
   out << "CGI: " << ft::containerToString(location.get_m_cgi(), "\n") << std::endl;
   out << "AUTOINDEX: " << std::boolalpha << location.get_m_autoindex()<< std::endl;
-  out << "REDIRECT: " << location.get_m_redirect_path() << std::endl;
+  out << "REDIRECT: " << location.get_m_redirect_uri() << std::endl;
   return out;
 }
