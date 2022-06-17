@@ -6,7 +6,7 @@
 #    By: bylee <bylee@student.42.fr>                +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2022/05/17 22:44:00 by jihoolee          #+#    #+#              #
-#    Updated: 2022/06/17 16:08:13 by bylee            ###   ########.fr        #
+#    Updated: 2022/06/17 21:25:56 by bylee            ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -34,6 +34,15 @@ OBJS		=	$(addprefix $(OBJ_DIR)/, $(SRCS:.cpp=.o))
 
 all : $(NAME)
 
+$(OBJ_DIR)/%.o : src/%.cpp $(OBJ_DIR)
+	$(CC) $(CFLAGS) -I $(INCLUDE_DIR) -c $< -o $@
+
+$(OBJ_DIR) :
+	@mkdir $(OBJ_DIR)
+
+$(NAME) : $(OBJS)
+	$(CC) $(CFLAGS) -o $(NAME) $^
+
 claen :
 	$(RM) $(OBJS)
 	$(RM) $(OBJ_DIR)
@@ -45,14 +54,5 @@ re : fclean all
 
 test : $(OBJS)
 	c++ -g3 -Wall -Wextra -Werror -fsanitize=address -o $(NAME) $^
-
-$(OBJ_DIR)/%.o : src/%.cpp $(OBJ_DIR)
-	$(CC) $(CFLAGS) -I $(INCLUDE_DIR) -c $< -o $@
-
-$(OBJ_DIR) :
-	@mkdir $(OBJ_DIR)
-
-$(NAME) : $(OBJS)
-	$(CC) $(CFLAGS) -o $(NAME) $^
 
 .PHONY : all clean fclean re
