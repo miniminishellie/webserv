@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   ServerManager.cpp                                  :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: jihoolee <jihoolee@student.42SEOUL.kr>     +#+  +:+       +#+        */
+/*   By: bylee <bylee@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/17 18:42:34 by jihoolee          #+#    #+#             */
-/*   Updated: 2022/06/15 15:24:43 by jihoolee         ###   ########.fr       */
+/*   Updated: 2022/06/17 20:20:27 by bylee            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -121,6 +121,8 @@ void ServerManager::createServers(const std::string& config_file_path, char* env
     ServerConfig new_server =
         ServerConfig(&this->m_config_, server_block, location_blocks);
     addServer_(new_server);
+    for (std::vector<const LocationConfig>::iterator it = new_server.get_m_locations().begin(); it != new_server.get_m_locations().end(); ++it)
+      std::cout << *it << std::endl;
   }
   writeCreateServerLog_();
 }
@@ -613,9 +615,9 @@ bool ServerManager::isValidServerBlock_(std::string& server_block){
 bool ServerManager::isValidLocationBlock_(std::string& location_block){
   std::map<std::string, std::string> map_block = \
     ft::stringVectorToMap(ft::splitStringByChar(location_block, '\n'), ' ');
-
+ 
   std::string key[] = {"location", "root", "allow_method", "auth_basic_realm",\
-    "auth_basic_file", "index", "cgi", "autoindex", "limit_client_body_size"};
+    "auth_basic_file", "index", "cgi", "autoindex", "limit_client_body_size", "redirect"};
   std::set<std::string> key_set(key, key + sizeof(key) / sizeof(key[0]));
 
   if (map_block.size() < 2 || map_block.size() > 9)
