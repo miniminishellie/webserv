@@ -6,7 +6,7 @@
 /*   By: jihoolee <jihoolee@student.42SEOUL.kr>     +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/25 21:44:42 by jihoolee          #+#    #+#             */
-/*   Updated: 2022/06/15 15:01:44 by jihoolee         ###   ########.fr       */
+/*   Updated: 2022/06/17 15:24:26 by jihoolee         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -1181,6 +1181,7 @@ void Connection::writeChunkedBodyToCGIScript() {
     rbuf.insert(0, len + "\r\n");
     return;
   } else {
+    count = write(to_child_fd, rbuf.c_str(), content_length);
     if (count > 0)
       m_read_buffer_client_ = m_read_buffer_client_.erase(0, content_length + 2);
     else if (count == 0 || count == -1)
@@ -1239,7 +1240,8 @@ bool Connection::runExecute() {
   }
 
   waitpid(m_child_pid_, &stat, WNOHANG);
-  if (WIFEXITED(stat) && read_end == true && m_write_to_server_fd_ == -1) {
+  if (WIFEXITED(stat) && read_end == true &&
+      !m_server_manager_->fdIsset(to_child_fd, ServerManager::WRITE_SET)) {
     if (from_child_fd != -1) {
       close(from_child_fd);
       m_server_manager_->fdClear(from_child_fd, ServerManager::READ_SET);
