@@ -6,7 +6,7 @@
 /*   By: bylee <bylee@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/25 21:44:42 by jihoolee          #+#    #+#             */
-/*   Updated: 2022/06/18 18:19:23 by bylee            ###   ########.fr       */
+/*   Updated: 2022/06/18 19:35:44 by bylee            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -525,7 +525,6 @@ void Connection::CreateCGIResponse(int& status, headers_t& headers, std::string&
   for (headers_t::iterator it = headers_in_body.begin(); it != headers_in_body.end(); it++) {
     key = ft::trimString(it->substr(0, it->find(":")), " \t");
     value = ft::trimString(it->substr(it->find(":") + 1), " \r\n\t");
-    std::cout << key << " : " << value << std::endl;
     if (key == "Status" || key == "status")
       status = ft::stoi(value);
     else if (!key.empty() && !value.empty())
@@ -555,7 +554,6 @@ void Connection::CreateResponse(int status, headers_t headers, std::string body)
     ReportCreateNewRequestLog(status);
     status /= 100;
   }
-
   headers.push_back(GetDateHeader());
   headers.push_back(GetServerHeader());
 
