@@ -6,7 +6,7 @@
 /*   By: bylee <bylee@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/21 15:14:43 by bylee             #+#    #+#             */
-/*   Updated: 2022/06/18 18:17:20 by bylee            ###   ########.fr       */
+/*   Updated: 2022/06/18 18:29:42 by bylee            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -142,7 +142,7 @@ std::string trimString(const std::string& str, const std::string& seps) {
 
 std::string getStringFromFile(const std::string& file_path, int max_size) {
   int fd = -1;
-  size_t read_byte = 0;
+  ssize_t read_byte = 0;
   char buf[1024];
   std::string result;
 
@@ -160,7 +160,7 @@ std::string getStringFromFile(const std::string& file_path, int max_size) {
 }
 
 std::string getStringFromFd(int fd, int max_size) {
-  int read_cnt = 0;
+  ssize_t read_cnt = 0;
   char buff[1024];
   std::string ret;
 
