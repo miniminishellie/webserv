@@ -6,7 +6,7 @@
 /*   By: bylee <bylee@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/25 21:44:42 by jihoolee          #+#    #+#             */
-/*   Updated: 2022/06/18 17:40:41 by bylee            ###   ########.fr       */
+/*   Updated: 2022/06/18 18:19:23 by bylee            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -919,7 +919,7 @@ bool isValidCredentialContent(LocationConfig* location,
                               std::vector<std::string>& credential) {
   std::string key, value;
   basic_decode(credential[1], key, value);
-  return (key.empty() || value.empty() ||
+  return !(key.empty() || value.empty() ||
           !ft::hasKey(location->get_m_auth_basic_file(), key) ||
           location->get_m_auth_basic_file().find(key)->second != value);
 }
