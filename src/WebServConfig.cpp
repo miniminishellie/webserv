@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   WebServConfig.cpp                                  :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: jihoolee <jihoolee@student.42SEOUL.kr>     +#+  +:+       +#+        */
+/*   By: bylee <bylee@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/24 22:09:15 by bylee             #+#    #+#             */
-/*   Updated: 2022/06/10 15:25:52 by jihoolee         ###   ########.fr       */
+/*   Updated: 2022/06/18 17:40:39 by bylee            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -136,11 +136,5 @@ std::ostream& operator<<(std::ostream& out, const WebservConfig& config) {
   out << "SOFTWARE_VERSION: " << config.get_m_software_version() << std::endl;
   out << "HTTP_VERSION: " << config.get_m_http_version() << std::endl;
   out << "CGI_VERSION: " << config.get_m_cgi_version() << std::endl;
-  // out << "CGI_ENVARIABLE:" << std::endl;
-  // char **env = config.get_m_base_env();
-  // while (env && *env) {
-  //   std::cout << *env << std::endl;
-  //   env++;
-  // }
   return (out);
 }

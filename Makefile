@@ -6,7 +6,7 @@
 #    By: bylee <bylee@student.42.fr>                +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2022/05/17 22:44:00 by jihoolee          #+#    #+#              #
-#    Updated: 2022/06/17 21:25:56 by bylee            ###   ########.fr        #
+#    Updated: 2022/06/18 17:35:17 by bylee            ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -18,7 +18,7 @@ RM			=	rm -rf
 
 INCLUDE_DIR	=	./include
 
-SRCS		=	main.cpp\
+SRC			=	main.cpp\
 				Libft.cpp\
 				Connection.cpp\
 				HtmlWriter.cpp\
@@ -28,20 +28,24 @@ SRCS		=	main.cpp\
 				ServerConfig.cpp\
 				ServerManager.cpp\
 				WebServConfig.cpp
+SRC_DIR		=	src/
+SRCS		=	$(addprefix $(SRC_DIR), $(SRC))
 
-OBJ_DIR		=	obj
-OBJS		=	$(addprefix $(OBJ_DIR)/, $(SRCS:.cpp=.o))
+OBJ_DIR		=	obj/
+OBJS		=	$(addprefix $(OBJ_DIR), $(SRC:.cpp=.o))
 
 all : $(NAME)
-
-$(OBJ_DIR)/%.o : src/%.cpp $(OBJ_DIR)
-	$(CC) $(CFLAGS) -I $(INCLUDE_DIR) -c $< -o $@
 
 $(OBJ_DIR) :
 	@mkdir $(OBJ_DIR)
 
-$(NAME) : $(OBJS)
-	$(CC) $(CFLAGS) -o $(NAME) $^
+$(OBJS):		| $(OBJ_DIR)
+
+${NAME} : ${OBJS}
+	${CC} ${CFLAGS} -I ${INCLUDE_DIR} ${OBJS} -o ${NAME}
+
+$(OBJ_DIR)%.o : $(SRC_DIR)%.cpp
+	$(CC) $(CFLAGS) -I $(INCLUDE_DIR) -c $< -o $@
 
 claen :
 	$(RM) $(OBJS)

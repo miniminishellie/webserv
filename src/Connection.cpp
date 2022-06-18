@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Connection.cpp                                     :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: jihoolee <jihoolee@student.42SEOUL.kr>     +#+  +:+       +#+        */
+/*   By: bylee <bylee@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/25 21:44:42 by jihoolee          #+#    #+#             */
-/*   Updated: 2022/06/17 20:48:13 by jihoolee         ###   ########.fr       */
+/*   Updated: 2022/06/18 17:40:41 by bylee            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -121,7 +121,7 @@ void Connection::clear() {
   m_request_.clear();
   m_readed_size_ = 0;
   m_response_.clear();
-  m_read_buffer_client_.clear();  //  TO_CHECK
+  m_read_buffer_client_.clear();
   m_read_buffer_server_.clear();
   m_wbuf_.clear();
   m_wbuf_data_size_ = 0;
@@ -330,21 +330,6 @@ bool Connection::ParseHeader() {
   std::string& read_buf = m_read_buffer_client_;
   std::string line;
 
-  // while (getLine(read_buf, line, REQUEST_HEADER_LIMIT_SIZE_MAX) >= 0) {
-  //   if (!IsValidHeader(line)) {
-  //     std::cout << "Error: Header is not Valid" << std::endl; //throw 40010
-  //     return false;
-  //   }
-  //   AddHeader(line);
-  //   line = "";
-  // }
-  // AddHeader(line);
-  // if (!hasKey(m_request_.get_m_headers(),"Host")) {
-  //   std::cout << "Error: Header does not have a Host" << std::endl;
-  //   return false;
-  // }
-  // return true;
-  // previous pureum code
   while(ft::getLine(read_buf, line, m_server_config_->get_m_request_header_size_limit()) >= 0) {
     if (line == "") {
       if (!ft::hasKey(m_request_.get_m_headers(), "Host"))
@@ -372,7 +357,6 @@ bool Connection::IsRequestHasBody() {
 }
 
 int Connection::RecvBody(char *buf, int buf_size) {
-  // int i = 0;
   int read_size = 0;
 
   if (m_request_.get_m_method() == Request::POST &&
@@ -391,19 +375,6 @@ int Connection::RecvBody(char *buf, int buf_size) {
     throw ServerManager::IOError(
       ("Connection close detected by client "
       + ft::to_string(m_client_fd_)).c_str());
-  // if ((read_size = read(fd, buf, BUFFER_SIZE)) > 0) {
-  //   while(i < read_size) {
-  //     if (buf[i] == '\r' && i + 3 < read_size && buf[i + 1] == '\n' && buf[i + 2] == '\r' && buf[i + 3] == '\n')
-  //         break;
-  //     i++;
-  //   }
-  //   if (i == read_size)
-  //       return 0;
-  // }
-  // ft_str_index_join(body, buf, i + 4);
-  // if (read_size  == -1)
-  //   std::cout << "READ ERROR/\n";
-  // return i;
 }
 
 bool Connection::ReadGeneralBody() {
@@ -472,8 +443,6 @@ bool Connection::ReadChunkedBody() {
 }
 
 bool Connection::ParseBody() {
-  // if (m_request_.get_m_method() == Request::POST && m_request_.get_m_transfer_type() == Request::CHUNKED)
-  //   return true;
   if (m_request_.get_m_method() != Request::POST &&
       m_request_.get_m_method() != Request::PUT)
     return true;
@@ -606,8 +575,6 @@ void Connection::CreateResponse(int status, headers_t headers, std::string body)
     headers.push_back("Content-Language:ko-KR");
   if (status / 100 != 2)
     headers.push_back("Connection:close");
-  // if (status / 100 == 3)
-  //   headers.push_back("Location:/");
   if (status == 504)
     headers.push_back("Retry-After:3600");
 
@@ -619,7 +586,6 @@ void Connection::CreateResponse(int status, headers_t headers, std::string body)
     std::string value = ft::ltrimString((*it).substr((*it).find(":") + 1), " ");
     response.addHeader(key, value);
   }
-  // writeCreateNewResponseLog(response);
   m_request_.set_m_phase(Request::COMPLETE);
   m_status_ = TO_SEND;
   m_server_manager_->fdSet(m_client_fd_, ServerManager::WRITE_SET);
@@ -1111,9 +1077,6 @@ bool Connection::runSend() {
     m_status_ = ON_WAIT;
     m_server_manager_->fdClear(m_client_fd_, ServerManager::WRITE_SET);
     writeSendResponseLog(m_response_);
-    // if (m_response_.get_m_status_code() / 100 != 2)
-    //   throw ServerManager::IOError("send error response.");
-    // else
       this->clear();
   }
   return m_wbuf_data_size_ == m_send_data_size_;
@@ -1259,7 +1222,6 @@ bool Connection::runExecute() {
       if (body.size() > body_size + body.find("\r\n\r\n") + 4) {
         CreateResponse(41301);
       } else {
-        // std::cout << body << std::endl;
         CreateResponse(CGI_SUCCESS_CODE, headers_t(), body);
       }
     } else {

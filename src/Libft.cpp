@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Libft.cpp                                          :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: jihoolee <jihoolee@student.42SEOUL.kr>     +#+  +:+       +#+        */
+/*   By: bylee <bylee@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/21 15:14:43 by bylee             #+#    #+#             */
-/*   Updated: 2022/06/09 15:12:19 by jihoolee         ###   ########.fr       */
+/*   Updated: 2022/06/18 17:40:42 by bylee            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -17,8 +17,6 @@ int stoi(std::string str, size_t base) {
   int sign = 1;
   __int64_t value = 0;
   __int64_t int_max = INT_MAX;
-  // long long value = 0;
-  // long long int_max = INT_MAX;
   std::string digit = "0123456789abcdefghijklmnopqrstuvwxyz";
 
   if (str.empty())
@@ -223,7 +221,7 @@ stringVectorToSet(std::vector<std::string> stringVector) {
 
 void log(int log_fd, std::string text) {
   if (log_fd != -1)
-    write(log_fd, text.c_str(), text.size()); //TO_CHECK
+    write(log_fd, text.c_str(), text.size());
 }
 
 long long int abs(long long int num) {

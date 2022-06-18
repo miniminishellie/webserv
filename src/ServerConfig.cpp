@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   ServerConfig.cpp                                   :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: jihoolee <jihoolee@student.42SEOUL.kr>     +#+  +:+       +#+        */
+/*   By: bylee <bylee@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/23 20:24:20 by jihoolee          #+#    #+#             */
-/*   Updated: 2022/05/28 19:01:04 by jihoolee         ###   ########.fr       */
+/*   Updated: 2022/06/18 17:40:43 by bylee            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -139,6 +139,5 @@ std::ostream& operator<<(std::ostream& out, const ServerConfig& config) {
   out << "request_uri_limit_size: " << config.get_m_request_uri_size_limit() << std::endl;
   out << "request_header_limit_size: " << config.get_m_request_header_size_limit() << std::endl;
   out << "limit_client_body_size: " << config.get_m_client_body_size_limit() << std::endl;
-  // out << "default_error_page: " << server.get_m_default_error_page() << std::endl;
   return out;
 }

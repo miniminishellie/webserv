@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   LocationConfig.cpp                                 :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: jihoolee <jihoolee@student.42SEOUL.kr>     +#+  +:+       +#+        */
+/*   By: bylee <bylee@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/25 12:43:59 by jihoolee          #+#    #+#             */
-/*   Updated: 2022/06/17 20:29:48 by jihoolee         ###   ########.fr       */
+/*   Updated: 2022/06/18 17:40:42 by bylee            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -45,7 +45,6 @@ LocationConfig::LocationConfig(const std::string& location_uri,
       ft::stringVectorToSet(
           ft::splitStringByChar(map_block.find("allow_method")->second, ' '));
   } else {
-    //  TO_CHECK
     this->m_allow_method_.insert("GET");
     this->m_allow_method_.insert("HEAD");
   }

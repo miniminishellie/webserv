@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   ServerManager.hpp                                  :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: jihoolee <jihoolee@student.42SEOUL.kr>     +#+  +:+       +#+        */
+/*   By: bylee <bylee@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/20 22:17:14 by bylee             #+#    #+#             */
-/*   Updated: 2022/06/12 17:07:43 by jihoolee         ###   ########.fr       */
+/*   Updated: 2022/06/18 17:40:41 by bylee            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -28,7 +28,7 @@
 # include "WebservConfig.hpp"
 # include "ServerConfig.hpp"
 # include "Connection.hpp"
-// # include "Server.hpp"
+
 
 # define DEFAULT_CONFIG_PATH  "config/default.conf"
 # define PORT_HTTP 80
@@ -130,10 +130,6 @@ class ServerManager {
   fd_set        m_write_copy_set_;
   fd_set        m_error_copy_set_;
 
-//   int                                 m_kqueue_;
-//   std::map<int, FdType>               m_fd_set_;  //  ->필요한지 한번 생각해보자
-//   struct kevent                       m_returned_events_[1024];
-//   std::vector<struct kevent>          m_change_list_;
 };  // class ServerManager
 
 #endif  //  SERVER_MANGER_HPP_

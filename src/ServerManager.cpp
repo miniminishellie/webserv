@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   ServerManager.cpp                                  :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: jihoolee <jihoolee@student.42SEOUL.kr>     +#+  +:+       +#+        */
+/*   By: bylee <bylee@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/17 18:42:34 by jihoolee          #+#    #+#             */
-/*   Updated: 2022/06/17 20:28:12 by jihoolee         ###   ########.fr       */
+/*   Updated: 2022/06/18 17:40:43 by bylee            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -96,25 +96,25 @@ std::string ServerManager::IOError::location() const throw() {
 bool  g_is_running;
 
 void ServerManager::createServers(const std::string& config_file_path, char* env[]) {
-  std::string config_string = ft::getStringFromFile(config_file_path); //config_string에 .conf 파일 통째로 string에 담김
+  std::string config_string = ft::getStringFromFile(config_file_path); 
   std::string config_block;
   std::vector<std::string> server_strings;
 
-  if (!splitConfigString_(config_string, config_block, server_strings)) // config_block에 nginx directives가 string에 통쨰로, server_strings에 nginx directives 제외한 나머지들이 string container에 server block별로 담김
+  if (!splitConfigString_(config_string, config_block, server_strings)) 
     throw (std::invalid_argument("Failed to split config strings"));
-  if (!isValidConfigBlock_(config_block)) // config_block 유효성 검사
+  if (!isValidConfigBlock_(config_block)) 
     throw(std::invalid_argument("Config block is not valid"));
-  m_config_ = WebservConfig(config_block, env); // 유효성 검사 마친 config_block m_config에 생성자 호출해 정보 저장
+  m_config_ = WebservConfig(config_block, env); 
   for (size_t i = 0; i < server_strings.size(); ++i){
     std::string server_block;
     std::vector<std::string> location_blocks;
 
-    if (!splitServerString_(server_strings[i], server_block, location_blocks)) // server_block에 location block 들을 제외한 server directives가 string에 통째로, location_blocks에 locations block들이 한 블록씩 통째로 string으로 담김(특이하게 마지막 '}' 이 놈을 안담음)
+    if (!splitServerString_(server_strings[i], server_block, location_blocks))
       throw std::invalid_argument("Failed to split Server string");
-    if (!isValidServerBlock_(server_block)) // server_block 유효성 검사
+    if (!isValidServerBlock_(server_block))
       throw std::invalid_argument("Server block is not valid");
     for (size_t j = 0; j < location_blocks.size(); ++j){
-      if (!isValidLocationBlock_(location_blocks[j])) // location_blocks 유효성 검사
+      if (!isValidLocationBlock_(location_blocks[j]))
         throw std::invalid_argument("Location block(" + ft::to_string(i) + "-" +
                                       ft::to_string(j) + ") is not valid");
     }
@@ -402,16 +402,13 @@ void ServerManager::addServer_(const ServerConfig& new_server) {
             reinterpret_cast<struct sockaddr*>(&serv_addr),
             sizeof(serv_addr)) == -1)
     throw std::runtime_error("bind() Error");
-  if (listen(server_socket_fd, 256) == -1)  //  backlog 크기는 나중에 테스트 후 수정
+  if (listen(server_socket_fd, 256) == -1) 
     throw std::runtime_error("listen() Error");
   if (fcntl(server_socket_fd, F_SETFL, O_NONBLOCK) == -1)
     throw std::runtime_error("fcntl() Error");
   fdSet(server_socket_fd, READ_SET);
   if (m_max_fd_ < server_socket_fd)
     m_max_fd_ = server_socket_fd;
-  // changeEvents_(m_change_list_, server_socket_fd, EVFILT_READ,
-  //                 EV_ADD | EV_ENABLE, 0, 0, NULL);
-  // insertFd(server_socket_fd, FD_SERVER);
   m_server_configs_[server_socket_fd] = new_server;
   m_fdset_.insert(server_socket_fd);
 }
@@ -422,10 +419,7 @@ bool ServerManager::acceptNewConnection_(int server_socket_fd) {
   int                 client_fd;
   std::string         client_ip;
   int                 client_port;
-  // struct timeval      tv;
 
-  // tv.tv_sec = 60;
-  // tv.tv_usec = 0;
   bzero(&client_addr, client_addr_size);
   if ((client_fd = accept(server_socket_fd,
         (struct sockaddr*)&client_addr, &client_addr_size)) == -1) {
@@ -436,12 +430,6 @@ bool ServerManager::acceptNewConnection_(int server_socket_fd) {
     m_max_fd_ = client_fd;
   if (fcntl(client_fd, F_SETFL, O_NONBLOCK) == -1)
     return false;
-  //  TO_CHECK
-  // setsockopt(client_fd, SOL_SOCKET, SO_RCVTIMEO, (struct timeval*)&tv, sizeof(struct timeval));
-  // setsockopt(client_fd, SOL_SOCKET, SO_SNDTIMEO, (struct timeval*)&tv, sizeof(struct timeval));
-
-  // addEvent(client_fd, EVFILT_READ, EV_ADD | EV_ENABLE,
-  //           0, 0, NULL);
   client_ip = ft::inet_ntoa(client_addr.sin_addr.s_addr);
   client_port = static_cast<int>(client_addr.sin_port);
   m_connections_[client_fd] =
