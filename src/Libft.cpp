@@ -6,7 +6,7 @@
 /*   By: bylee <bylee@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/21 15:14:43 by bylee             #+#    #+#             */
-/*   Updated: 2022/06/18 19:07:13 by bylee            ###   ########.fr       */
+/*   Updated: 2022/06/18 20:01:58 by bylee            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -153,8 +153,8 @@ std::string getStringFromFile(const std::string& file_path, int max_size) {
     if (max_size != -1 && static_cast<int>(result.size()) > max_size)
       throw std::overflow_error("overflow max_size in getStringFromFile");
   }
-  // if (read_byte == -1)
-  //   throw std::runtime_error("file read error in getStringFromFile");
+  if (read_byte == -1)
+    throw std::runtime_error("file read error in getStringFromFile");
   close(fd);
   return (result);
 }
@@ -169,8 +169,8 @@ std::string getStringFromFd(int fd, int max_size) {
     if (max_size != -1 && static_cast<int>(ret.size()) > max_size)
       throw (std::overflow_error("overflow max_size in getStringFromFile"));
   }
-  // if (read_cnt == -1)
-  //   throw std::runtime_error("file read error in getStringFromFd");
+  if (read_cnt == -1)
+    throw std::runtime_error("file read error in getStringFromFd");
   close(fd);
   return (ret);
 }
