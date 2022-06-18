@@ -6,7 +6,7 @@
 /*   By: bylee <bylee@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/05/21 15:14:43 by bylee             #+#    #+#             */
-/*   Updated: 2022/06/18 17:40:42 by bylee            ###   ########.fr       */
+/*   Updated: 2022/06/18 18:17:20 by bylee            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -148,11 +148,13 @@ std::string getStringFromFile(const std::string& file_path, int max_size) {
 
   if ((fd = open(file_path.c_str(), O_RDONLY)) == -1)
     throw(std::invalid_argument("Failed to open " + file_path));
-  while ((read_byte = read(fd, buf, 1024)) > 0) {  //  TO_CHECK
+  while ((read_byte = read(fd, buf, 1024)) > 0) {
     result.append(buf, read_byte);
     if (max_size != -1 && static_cast<int>(result.size()) > max_size)
       throw std::overflow_error("overflow max_size in getStringFromFile");
   }
+  if (read_byte == -1)
+    throw std::runtime_error("file read error in getStringFromFile");
   close(fd);
   return (result);
 }
@@ -162,11 +164,13 @@ std::string getStringFromFd(int fd, int max_size) {
   char buff[1024];
   std::string ret;
 
-  while ((read_cnt = read(fd, buff, 1024)) > 0) { // TO_CHECK
+  while ((read_cnt = read(fd, buff, 1024)) > 0) {
     ret.append(buff, read_cnt);
     if (max_size != -1 && static_cast<int>(ret.size()) > max_size)
       throw (std::overflow_error("overflow max_size in getStringFromFile"));
   }
+  if (read_cnt == -1)
+    throw std::runtime_error("file read error in getStringFromFd");
   close(fd);
   return (ret);
 }
