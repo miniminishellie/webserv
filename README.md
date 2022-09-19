@@ -72,10 +72,26 @@ server {
     
 # Demo
  #### Using Browser
-  
- 
+ 1. Getting normal `HTML` document
+![get-2022-09-19-at-11 37 47-AM](https://user-images.githubusercontent.com/48874494/190950138-5ef2a853-9b5d-407c-ae01-2b26e17a187f.gif)
+
+ 2. Getting `PHP CGI`
+ ![cgiScreen-Recording-2022-09-19-at-11 38 56-AM](https://user-images.githubusercontent.com/48874494/190950342-fcaed511-2b32-404a-9400-0d552e02583d.gif)
+
+
  #### Using Postman
  
+  ```
+ [PUT] localhost:8080/hello
+ [DELETE] localhost:8080/hello
+ ```
+ ![PutDeleteScreen-Recording-2022-09-19-at-12 33 05-PM](https://user-images.githubusercontent.com/48874494/190950296-704bbd3f-046c-49f5-b585-3c7c37846166.gif)
+ 
+
+ 
  #### Siege Test
- 
- 
+ ```bash
+ siege -b 127.0.0.1:8080
+ ```
+ ![Screen-Recording-2022-09-19-at-1 22 18-PM](https://user-images.githubusercontent.com/48874494/190950467-b25229ec-5021-4898-a954-c5f19af696a5.gif)
+
