@@ -95,3 +95,11 @@ server {
  ```
  ![Screen-Recording-2022-09-19-at-1 22 18-PM](https://user-images.githubusercontent.com/48874494/190950467-b25229ec-5021-4898-a954-c5f19af696a5.gif)
 
+# Authors
+- [Pureum Lee](https://github.com/pupureum)
+
+- [Jihoon Lee](https://github.com/JihoonNoahLee)
+
+- [ByungKyu Lee](https://github.com/Lee-Byung-Kyu)
+
+- [:globe_with_meridians: 노션 페이지](https://tide-anglerfish-b94.notion.site/Webserv-Team-Page-1463f88b2e914d35a21d021857caca22)
